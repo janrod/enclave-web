@@ -68,28 +68,38 @@
     .lead {
       margin: 0;
       font-optical-sizing: auto;
-      font-weight: 420;
-      font-size: clamp(1.35rem, 1.05rem + 1.35vw, 1.9rem);
+      font-weight: 400;
+      font-size: clamp(1.3rem, 1.05rem + 1.1vw, 1.7rem);
       line-height: 1.4;
       letter-spacing: -0.012em;
       color: var(--ink);
       text-wrap: pretty;
     }
 
+    /* The value prop — isolated, largest, brightest */
+    .prop {
+      margin: clamp(1.5rem, 3.2vw, 2.15rem) 0 0;
+      font-optical-sizing: auto;
+      font-weight: 460;
+      font-size: clamp(1.6rem, 1.15rem + 2vw, 2.3rem);
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      text-wrap: balance;
+    }
+
     .support {
-      margin: clamp(1.4rem, 3vw, 2rem) 0 0;
+      margin: clamp(1.75rem, 3.5vw, 2.4rem) 0 0;
       font-weight: 380;
-      font-size: clamp(1.05rem, 0.95rem + 0.55vw, 1.25rem);
+      font-size: clamp(1rem, 0.92rem + 0.5vw, 1.2rem);
       line-height: 1.55;
       letter-spacing: -0.006em;
       color: var(--ink-dim);
       text-wrap: pretty;
     }
 
-    .support .services {
-      display: block;
-      margin-top: 0.85em;
-      color: var(--ink-faint);
+    .support + .support {
+      margin-top: clamp(1rem, 2vw, 1.3rem);
     }
 
     .contact {
@@ -143,7 +153,11 @@
   <main>
     <img class="logo" src="assets/enclavelogo-transparent-noborder.png" alt="ENCLAVE" width="1416" height="147" />
 
-    <p class="lead">We help our clients define the problems worth funding and test what would break them — so they invest on evidence, not assumptions, because answers are commoditized and value shifts to insight and real-world evidence.</p>
+    <p class="lead">We help our clients define the problems worth funding and test what would break them.</p>
+
+    <p class="prop">So they invest on evidence, not assumptions.</p>
+
+    <p class="support">Answers are commoditized; value shifts to insight and real-world evidence.</p>
 
     <p class="support">We prototype in the real world, putting the make-or-break assumption in front of real behavior, and turn what we learn into decisions you can fund.</p>
 

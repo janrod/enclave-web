@@ -102,7 +102,6 @@
     .flap .cell {
       display: inline-block;
       width: 1ch;
-      overflow: hidden;
       text-align: center;
       vertical-align: baseline;
     }
@@ -208,12 +207,12 @@
       setWord(words[0]);
 
       if (reduce) {
-        setInterval(function () { wi = (wi + 1) % words.length; setWord(words[wi]); }, 3000);
+        setInterval(function () { wi = (wi + 1) % words.length; setWord(words[wi]); }, 4500);
         return;
       }
 
-      var STEP = 45;  // ms between glyph riffles
-      var BASE = 5;   // min riffles before a column locks
+      var STEP = 70;  // ms between glyph riffles
+      var BASE = 6;   // min riffles before a column locks
       var busy = false;
 
       function scrambleTo(next) {
@@ -246,7 +245,7 @@
         if (busy) return;
         wi = (wi + 1) % words.length;
         scrambleTo(words[wi]);
-      }, 2600);
+      }, 4500);
     })();
   </script>
 </body>

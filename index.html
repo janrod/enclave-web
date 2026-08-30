@@ -20,7 +20,7 @@
   <!-- Type: Fraunces (editorial display serif) + Spline Sans Mono (technical accent) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340..460;1,9..144,340..460&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340..460;1,9..144,340..460&family=Space+Grotesk:wght@500&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
   <style>
     :root {
@@ -30,6 +30,7 @@
       --ink-faint: rgba(237, 237, 234, 0.42);
       --rule: rgba(237, 237, 234, 0.14);
       --serif: "Fraunces", Georgia, "Times New Roman", serif;
+      --sans: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
       --mono: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, monospace;
     }
 
@@ -62,7 +63,17 @@
       display: block;
       width: clamp(230px, 44vw, 380px);
       height: auto;
+      margin: 0 0 clamp(0.85rem, 2vw, 1.1rem);
+    }
+
+    .tagline {
       margin: 0 0 clamp(2.25rem, 5vw, 3.25rem);
+      font-family: var(--sans);
+      font-weight: 500;
+      font-size: clamp(0.7rem, 0.66rem + 0.2vw, 0.82rem);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(237, 237, 234, 0.62);
     }
 
     .lead {
@@ -159,6 +170,7 @@
 <body>
   <main>
     <img class="logo" src="assets/enclavelogo-transparent-noborder.png" alt="ENCLAVE" width="1416" height="147" />
+    <p class="tagline">Strategy tested by building</p>
 
     <p class="lead">We help our clients define the problems worth funding and test what would break them, so they invest on evidence, not assumptions.</p>
 

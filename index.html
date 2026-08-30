@@ -90,6 +90,26 @@
       margin-top: clamp(1rem, 2vw, 1.3rem);
     }
 
+    /* Exotic-ASCII scramble cycling word */
+    .flap {
+      color: #fff;
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 0.9em;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .flap .cell {
+      display: inline-block;
+      width: 1ch;
+      overflow: hidden;
+      text-align: center;
+      vertical-align: baseline;
+    }
+    .flap .cell.scrambling {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
     .contact {
       margin-top: clamp(2.75rem, 6vw, 4rem);
       padding-top: clamp(1.5rem, 3vw, 2rem);
@@ -145,12 +165,89 @@
 
     <p class="support">Answers are commoditized; value shifts to insight and real-world evidence.</p>
 
-    <p class="support">We prototype in the real world, putting the make-or-break assumption in front of real behavior, and turn what we learn into decisions you can fund.</p>
+    <p class="support">We prototype <span class="flap" aria-label="experiences, products, value propositions, brands, and business models" data-words="experiences|products|value propositions|brands|business models">experiences</span> in the real world, putting the make-or-break assumption in front of real behavior, and turn what we learn into decisions you can fund.</p>
 
     <div class="contact">
       <span class="label">Contact</span>
       <a href="mailto:hello@enclave.jp">hello@enclave.jp</a>
     </div>
   </main>
+
+  <script>
+    (function () {
+      var el = document.querySelector('.flap');
+      if (!el) return;
+      var words = (el.getAttribute('data-words') || '').split('|').filter(Boolean);
+      if (!words.length) return;
+      el.textContent = ''; // clear the no-JS fallback word
+
+      var GLYPHS = '!<>-_/\\[]{}=+*#%&@?§¤±∆◊‡†≡░▒▓';
+      var NBSP = ' ';
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function ensureCells(n) {
+        while (el.children.length < n) {
+          var c = document.createElement('span');
+          c.className = 'cell';
+          c.setAttribute('aria-hidden', 'true');
+          c.textContent = NBSP;
+          el.appendChild(c);
+        }
+        while (el.children.length > n) el.removeChild(el.lastChild);
+      }
+      function show(ch) { return ch === ' ' ? NBSP : ch; }
+      function setWord(w) {
+        ensureCells(w.length);
+        for (var i = 0; i < w.length; i++) {
+          el.children[i].className = 'cell';
+          el.children[i].textContent = show(w[i]);
+        }
+      }
+
+      var wi = 0;
+      setWord(words[0]);
+
+      if (reduce) {
+        setInterval(function () { wi = (wi + 1) % words.length; setWord(words[wi]); }, 3000);
+        return;
+      }
+
+      var STEP = 45;  // ms between glyph riffles
+      var BASE = 5;   // min riffles before a column locks
+      var busy = false;
+
+      function scrambleTo(next) {
+        busy = true;
+        ensureCells(next.length);
+        var pending = next.length;
+        for (var i = 0; i < next.length; i++) {
+          (function (i) {
+            var cell = el.children[i];
+            var target = next[i];
+            var lock = BASE + i + (Math.random() * 2 | 0); // decode left -> right
+            var n = 0;
+            cell.className = 'cell scrambling';
+            var t = setInterval(function () {
+              n++;
+              if (n >= lock) {
+                clearInterval(t);
+                cell.className = 'cell';
+                cell.textContent = show(target);
+                if (--pending === 0) busy = false;
+              } else {
+                cell.textContent = GLYPHS[(Math.random() * GLYPHS.length) | 0];
+              }
+            }, STEP);
+          })(i);
+        }
+      }
+
+      setInterval(function () {
+        if (busy) return;
+        wi = (wi + 1) % words.length;
+        scrambleTo(words[wi]);
+      }, 2600);
+    })();
+  </script>
 </body>
 </html>

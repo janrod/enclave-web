@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ENCLAVE — Invest on evidence, not assumptions</title>
+  <meta name="description" content="When answers are commoditized, value shifts to insight and real-world evidence. ENCLAVE helps clients define the problems worth funding and test what would break them — so they invest on evidence, not assumptions." />
+
+  <!-- Open Graph / social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ENCLAVE" />
+  <meta property="og:description" content="Invest on evidence, not assumptions." />
+  <meta property="og:url" content="https://enclave.jp/" />
+  <meta property="og:image" content="https://enclave.jp/assets/enclavelogo-black.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="canonical" href="https://enclave.jp/" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+
+  <!-- Type: Fraunces (editorial display serif) + Spline Sans Mono (technical accent) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340..460;1,9..144,340..460&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --ink: #ededea;
+      --ink-dim: rgba(237, 237, 234, 0.60);
+      --ink-faint: rgba(237, 237, 234, 0.42);
+      --rule: rgba(237, 237, 234, 0.14);
+      --serif: "Fraunces", Georgia, "Times New Roman", serif;
+      --mono: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(1.75rem, 5vw, 5rem);
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--serif);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      /* Faint radial lift so the black doesn't read as flat */
+      background-image: radial-gradient(120% 90% at 50% -10%, #141414 0%, #0a0a0a 60%);
+    }
+
+    main {
+      width: 100%;
+      max-width: 47rem;
+    }
+
+    .logo {
+      display: block;
+      width: clamp(230px, 44vw, 380px);
+      height: auto;
+      margin: 0 0 clamp(2.25rem, 5vw, 3.25rem);
+    }
+
+    .lead {
+      margin: 0;
+      font-optical-sizing: auto;
+      font-weight: 420;
+      font-size: clamp(1.35rem, 1.05rem + 1.35vw, 1.9rem);
+      line-height: 1.4;
+      letter-spacing: -0.012em;
+      color: var(--ink);
+      text-wrap: pretty;
+    }
+
+    .support {
+      margin: clamp(1.4rem, 3vw, 2rem) 0 0;
+      font-weight: 380;
+      font-size: clamp(1.05rem, 0.95rem + 0.55vw, 1.25rem);
+      line-height: 1.55;
+      letter-spacing: -0.006em;
+      color: var(--ink-dim);
+      text-wrap: pretty;
+    }
+
+    .support .services {
+      display: block;
+      margin-top: 0.85em;
+      color: var(--ink-faint);
+    }
+
+    .contact {
+      margin-top: clamp(2.75rem, 6vw, 4rem);
+      padding-top: clamp(1.5rem, 3vw, 2rem);
+      border-top: 1px solid var(--rule);
+      font-family: var(--mono);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.5rem 1.25rem;
+    }
+
+    .contact .label {
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+    }
+
+    .contact a {
+      font-size: clamp(0.95rem, 0.9rem + 0.3vw, 1.1rem);
+      font-weight: 400;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+      text-decoration: none;
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 2px;
+      transition: border-color 160ms ease, color 160ms ease;
+    }
+
+    .contact a:hover,
+    .contact a:focus-visible {
+      color: #fff;
+      border-color: rgba(237, 237, 234, 0.7);
+    }
+
+    .contact a:focus-visible {
+      outline: 2px solid rgba(237, 237, 234, 0.6);
+      outline-offset: 4px;
+      border-radius: 1px;
+    }
+
+    @media (max-width: 30rem) {
+      .contact { flex-direction: column; gap: 0.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <img class="logo" src="assets/enclave-wordmark-light.png" alt="ENCLAVE" width="1692" height="405" />
+
+    <p class="lead">When answers are commoditized, value shifts to insight and real-world evidence. We help clients define the problems worth funding and test what would break them — so they invest on evidence, not assumptions.</p>
+
+    <p class="support">We prototype in the real world, putting the make-or-break assumption in front of real behavior, and turn what we learn into decisions you can fund.<span class="services">We build and test experiences, products, value propositions, brands, and business models.</span></p>
+
+    <div class="contact">
+      <span class="label">Contact</span>
+      <a href="mailto:hello@enclave.jp">hello@enclave.jp</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,7 @@
+.DS_Store
+*.log
+Thumbs.db
+
+# Internal — NEVER publish. Free GitHub Pages = public repo, so this stays local only.
+# Contains private positioning/strategy (marked "(private)"/"(never public)" in the doc).
+docs/

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ENCLAVE">
+  <rect width="64" height="64" fill="#0a0a0a"/>
+  <!-- Angular stencil 'E', echoing the wordmark's cut corner -->
+  <path fill="#ededea" d="M20 16h26l-4 7H27v5h13v7H27v6h19v7H20z"/>
+</svg>

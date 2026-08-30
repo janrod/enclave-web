@@ -206,6 +206,27 @@
       var wi = 0;
       setWord(words[0]);
 
+      // Lock the paragraph to its tallest word so line-count changes
+      // don't shift the vertically-centered layout. Measured across all
+      // words (synchronously, so no flicker) and re-run on resize / fonts.
+      var para = el.parentNode;
+      function lockHeight() {
+        if (!para) return;
+        para.style.minHeight = '0px';
+        var max = 0;
+        for (var k = 0; k < words.length; k++) {
+          setWord(words[k]);
+          if (para.offsetHeight > max) max = para.offsetHeight;
+        }
+        setWord(words[wi]);
+        para.style.minHeight = max + 'px';
+      }
+      var rt;
+      function relock() { clearTimeout(rt); rt = setTimeout(lockHeight, 150); }
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(lockHeight);
+      else lockHeight();
+      window.addEventListener('resize', relock);
+
       if (reduce) {
         setInterval(function () { wi = (wi + 1) % words.length; setWord(words[wi]); }, 4500);
         return;

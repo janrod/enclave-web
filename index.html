@@ -12,9 +12,14 @@
   <meta property="og:description" content="Invest on evidence, not assumptions." />
   <meta property="og:url" content="https://enclave.jp/" />
   <meta property="og:image" content="https://enclave.jp/assets/enclavelogo-black.png" />
+  <meta property="og:locale" content="en" />
+  <meta property="og:locale:alternate" content="ja_JP" />
   <meta name="twitter:card" content="summary_large_image" />
 
   <link rel="canonical" href="https://enclave.jp/" />
+  <link rel="alternate" hreflang="en" href="https://enclave.jp/" />
+  <link rel="alternate" hreflang="ja" href="https://enclave.jp/ja/" />
+  <link rel="alternate" hreflang="x-default" href="https://enclave.jp/" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
 
   <!-- Type: Fraunces (editorial display serif) + Spline Sans Mono (technical accent) -->
@@ -22,153 +27,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340..460;1,9..144,340..460&family=Space+Grotesk:wght@500&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <style>
-    :root {
-      --bg: #0a0a0a;
-      --ink: #ededea;
-      --ink-dim: rgba(237, 237, 234, 0.60);
-      --ink-faint: rgba(237, 237, 234, 0.42);
-      --rule: rgba(237, 237, 234, 0.14);
-      --serif: "Fraunces", Georgia, "Times New Roman", serif;
-      --sans: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
-      --mono: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, monospace;
-    }
-
-    * { box-sizing: border-box; }
-
-    html { -webkit-text-size-adjust: 100%; }
-
-    body {
-      margin: 0;
-      min-height: 100dvh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: clamp(1.75rem, 5vw, 5rem);
-      background: var(--bg);
-      color: var(--ink);
-      font-family: var(--serif);
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
-      /* Faint radial lift so the black doesn't read as flat */
-      background-image: radial-gradient(120% 90% at 50% -10%, #141414 0%, #0a0a0a 60%);
-    }
-
-    main {
-      width: 100%;
-      max-width: 47rem;
-    }
-
-    .logo {
-      display: block;
-      width: clamp(230px, 44vw, 380px);
-      height: auto;
-      margin: 0 0 clamp(0.85rem, 2vw, 1.1rem);
-    }
-
-    .tagline {
-      margin: 0 0 clamp(2.25rem, 5vw, 3.25rem);
-      font-family: var(--sans);
-      font-weight: 500;
-      font-size: clamp(0.7rem, 0.66rem + 0.2vw, 0.82rem);
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: rgba(237, 237, 234, 0.62);
-    }
-
-    .lead {
-      margin: 0;
-      font-optical-sizing: auto;
-      font-weight: 430;
-      font-size: clamp(1.45rem, 1.1rem + 1.5vw, 2rem);
-      line-height: 1.35;
-      letter-spacing: -0.016em;
-      color: var(--ink);
-      text-wrap: pretty;
-    }
-
-    .support {
-      margin: clamp(1.75rem, 3.5vw, 2.4rem) 0 0;
-      font-weight: 380;
-      font-size: clamp(1rem, 0.92rem + 0.5vw, 1.2rem);
-      line-height: 1.55;
-      letter-spacing: -0.006em;
-      color: var(--ink-dim);
-      text-wrap: pretty;
-    }
-
-    .support + .support {
-      margin-top: clamp(1rem, 2vw, 1.3rem);
-    }
-
-    /* Exotic-ASCII scramble cycling word */
-    .flap {
-      color: #fff;
-      font-family: var(--mono);
-      font-weight: 500;
-      font-size: 0.9em;
-      letter-spacing: 0;
-      white-space: nowrap;
-    }
-    .flap .cell {
-      display: inline-block;
-      width: 1ch;
-      text-align: center;
-      vertical-align: baseline;
-    }
-    .flap .cell.scrambling {
-      color: rgba(255, 255, 255, 0.5);
-    }
-
-    .contact {
-      margin-top: clamp(2.75rem, 6vw, 4rem);
-      padding-top: clamp(1.5rem, 3vw, 2rem);
-      border-top: 1px solid var(--rule);
-      font-family: var(--mono);
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 0.5rem 1.25rem;
-    }
-
-    .contact .label {
-      font-size: 0.72rem;
-      font-weight: 500;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--ink-faint);
-    }
-
-    .contact a {
-      font-size: clamp(0.95rem, 0.9rem + 0.3vw, 1.1rem);
-      font-weight: 400;
-      letter-spacing: -0.01em;
-      color: var(--ink);
-      text-decoration: none;
-      border-bottom: 1px solid var(--rule);
-      padding-bottom: 2px;
-      transition: border-color 160ms ease, color 160ms ease;
-    }
-
-    .contact a:hover,
-    .contact a:focus-visible {
-      color: #fff;
-      border-color: rgba(237, 237, 234, 0.7);
-    }
-
-    .contact a:focus-visible {
-      outline: 2px solid rgba(237, 237, 234, 0.6);
-      outline-offset: 4px;
-      border-radius: 1px;
-    }
-
-    @media (max-width: 30rem) {
-      .contact { flex-direction: column; gap: 0.4rem; }
-    }
-  </style>
+  <link rel="stylesheet" href="assets/site.css" />
 </head>
 <body>
   <main>
+    <nav class="lang" aria-label="Language">
+      <span class="current" aria-current="true">EN</span>
+      <span class="sep" aria-hidden="true">/</span>
+      <a href="ja/" hreflang="ja" lang="ja">日本語</a>
+    </nav>
+
     <img class="logo" src="assets/enclavelogo-transparent-noborder.png" alt="ENCLAVE" width="1416" height="147" />
     <p class="tagline">Strategy tested by building</p>
 
@@ -184,102 +52,6 @@
     </div>
   </main>
 
-  <script>
-    (function () {
-      var el = document.querySelector('.flap');
-      if (!el) return;
-      var words = (el.getAttribute('data-words') || '').split('|').filter(Boolean);
-      if (!words.length) return;
-      el.textContent = ''; // clear the no-JS fallback word
-
-      var GLYPHS = '!<>-_/\\[]{}=+*#%&@?§¤±∆◊‡†≡░▒▓';
-      var NBSP = ' ';
-      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-      function ensureCells(n) {
-        while (el.children.length < n) {
-          var c = document.createElement('span');
-          c.className = 'cell';
-          c.setAttribute('aria-hidden', 'true');
-          c.textContent = NBSP;
-          el.appendChild(c);
-        }
-        while (el.children.length > n) el.removeChild(el.lastChild);
-      }
-      function show(ch) { return ch === ' ' ? NBSP : ch; }
-      function setWord(w) {
-        ensureCells(w.length);
-        for (var i = 0; i < w.length; i++) {
-          el.children[i].className = 'cell';
-          el.children[i].textContent = show(w[i]);
-        }
-      }
-
-      var wi = 0;
-      setWord(words[0]);
-
-      // Lock the paragraph to its tallest word so line-count changes
-      // don't shift the vertically-centered layout. Measured across all
-      // words (synchronously, so no flicker) and re-run on resize / fonts.
-      var para = el.parentNode;
-      function lockHeight() {
-        if (!para) return;
-        para.style.minHeight = '0px';
-        var max = 0;
-        for (var k = 0; k < words.length; k++) {
-          setWord(words[k]);
-          if (para.offsetHeight > max) max = para.offsetHeight;
-        }
-        setWord(words[wi]);
-        para.style.minHeight = max + 'px';
-      }
-      var rt;
-      function relock() { clearTimeout(rt); rt = setTimeout(lockHeight, 150); }
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(lockHeight);
-      else lockHeight();
-      window.addEventListener('resize', relock);
-
-      if (reduce) {
-        setInterval(function () { wi = (wi + 1) % words.length; setWord(words[wi]); }, 4500);
-        return;
-      }
-
-      var STEP = 70;  // ms between glyph riffles
-      var BASE = 6;   // min riffles before a column locks
-      var busy = false;
-
-      function scrambleTo(next) {
-        busy = true;
-        ensureCells(next.length);
-        var pending = next.length;
-        for (var i = 0; i < next.length; i++) {
-          (function (i) {
-            var cell = el.children[i];
-            var target = next[i];
-            var lock = BASE + i + (Math.random() * 2 | 0); // decode left -> right
-            var n = 0;
-            cell.className = 'cell scrambling';
-            var t = setInterval(function () {
-              n++;
-              if (n >= lock) {
-                clearInterval(t);
-                cell.className = 'cell';
-                cell.textContent = show(target);
-                if (--pending === 0) busy = false;
-              } else {
-                cell.textContent = GLYPHS[(Math.random() * GLYPHS.length) | 0];
-              }
-            }, STEP);
-          })(i);
-        }
-      }
-
-      setInterval(function () {
-        if (busy) return;
-        wi = (wi + 1) % words.length;
-        scrambleTo(words[wi]);
-      }, 4500);
-    })();
-  </script>
+  <script src="assets/flap.js"></script>
 </body>
 </html>

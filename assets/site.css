@@ -1,0 +1,231 @@
+:root {
+  --bg: #0a0a0a;
+  --ink: #ededea;
+  --ink-dim: rgba(237, 237, 234, 0.60);
+  --ink-faint: rgba(237, 237, 234, 0.42);
+  --rule: rgba(237, 237, 234, 0.14);
+  --serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --sans: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --mono: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --cjk-serif: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --cjk-sans: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.75rem, 5vw, 5rem);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--serif);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Faint radial lift so the black doesn't read as flat */
+  background-image: radial-gradient(120% 90% at 50% -10%, #141414 0%, #0a0a0a 60%);
+}
+
+main {
+  width: 100%;
+  max-width: 47rem;
+}
+
+/* Language switcher — sits on the content column, not the viewport edge */
+.lang {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 0.55rem;
+  margin: 0 0 clamp(1.5rem, 4vw, 2.25rem);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+}
+
+.lang a,
+.lang .current {
+  text-decoration: none;
+  padding-bottom: 2px;
+  border-bottom: 1px solid transparent;
+}
+
+.lang .current {
+  color: var(--ink);
+}
+
+.lang a {
+  color: var(--ink-faint);
+  transition: color 160ms ease, border-color 160ms ease;
+}
+
+.lang a:hover,
+.lang a:focus-visible {
+  color: var(--ink);
+  border-bottom-color: var(--rule);
+}
+
+.lang a:focus-visible {
+  outline: 2px solid rgba(237, 237, 234, 0.6);
+  outline-offset: 4px;
+  border-radius: 1px;
+}
+
+.lang .sep {
+  color: rgba(237, 237, 234, 0.24);
+}
+
+.lang :lang(ja) {
+  font-family: var(--cjk-sans);
+  letter-spacing: 0.06em;
+}
+
+.logo {
+  display: block;
+  width: clamp(230px, 44vw, 380px);
+  height: auto;
+  margin: 0 0 clamp(0.85rem, 2vw, 1.1rem);
+}
+
+.tagline {
+  margin: 0 0 clamp(2.25rem, 5vw, 3.25rem);
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: clamp(0.7rem, 0.66rem + 0.2vw, 0.82rem);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(237, 237, 234, 0.62);
+}
+
+.lead {
+  margin: 0;
+  font-optical-sizing: auto;
+  font-weight: 430;
+  font-size: clamp(1.45rem, 1.1rem + 1.5vw, 2rem);
+  line-height: 1.35;
+  letter-spacing: -0.016em;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.support {
+  margin: clamp(1.75rem, 3.5vw, 2.4rem) 0 0;
+  font-weight: 380;
+  font-size: clamp(1rem, 0.92rem + 0.5vw, 1.2rem);
+  line-height: 1.55;
+  letter-spacing: -0.006em;
+  color: var(--ink-dim);
+  text-wrap: pretty;
+}
+
+.support + .support {
+  margin-top: clamp(1rem, 2vw, 1.3rem);
+}
+
+/* Exotic-ASCII scramble cycling word */
+.flap {
+  color: #fff;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 0.9em;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.flap .cell {
+  display: inline-block;
+  width: var(--cell-w, 1ch);
+  text-align: center;
+  vertical-align: baseline;
+}
+.flap .cell.scrambling {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.contact {
+  margin-top: clamp(2.75rem, 6vw, 4rem);
+  padding-top: clamp(1.5rem, 3vw, 2rem);
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.25rem;
+}
+
+.contact .label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.contact a {
+  font-size: clamp(0.95rem, 0.9rem + 0.3vw, 1.1rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 2px;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.contact a:hover,
+.contact a:focus-visible {
+  color: #fff;
+  border-color: rgba(237, 237, 234, 0.7);
+}
+
+.contact a:focus-visible {
+  outline: 2px solid rgba(237, 237, 234, 0.6);
+  outline-offset: 4px;
+  border-radius: 1px;
+}
+
+@media (max-width: 30rem) {
+  .contact { flex-direction: column; gap: 0.4rem; }
+}
+
+/* ---- Japanese ----------------------------------------------------------
+   Latin faces stay first in each stack (the logo alt, the email, "EN"),
+   with the Noto JP faces picking up every CJK codepoint behind them.
+   CJK needs looser leading, no negative tracking, and full-width scramble
+   cells instead of the half-width 1ch the mono face gives Latin. */
+html[lang="ja"] {
+  --serif: "Fraunces", "Noto Serif JP", Georgia, serif;
+  --sans: "Space Grotesk", "Noto Sans JP", "Helvetica Neue", Arial, sans-serif;
+  --mono: "Spline Sans Mono", "Noto Sans JP", ui-monospace, Menlo, monospace;
+  --cell-w: 1em;
+}
+
+html[lang="ja"] .tagline {
+  font-size: clamp(0.74rem, 0.7rem + 0.2vw, 0.86rem);
+  letter-spacing: 0.24em;
+}
+
+html[lang="ja"] .lead {
+  font-weight: 400;
+  font-size: clamp(1.3rem, 1rem + 1.3vw, 1.75rem);
+  line-height: 1.62;
+  letter-spacing: 0.01em;
+  line-break: strict;
+}
+
+html[lang="ja"] .support {
+  font-weight: 350;
+  line-height: 1.85;
+  letter-spacing: 0.012em;
+  line-break: strict;
+}
+
+html[lang="ja"] .contact .label {
+  font-family: var(--cjk-sans);
+  letter-spacing: 0.16em;
+}

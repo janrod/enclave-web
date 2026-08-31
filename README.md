@@ -1,18 +1,38 @@
 # enclave.jp
 
-Static landing page for **ENCLAVE**. One HTML file, no build step, hosted free on GitHub Pages.
+Static landing page for **ENCLAVE**, in English and Japanese. No build step, hosted free on GitHub Pages.
 
 ## Files
 
 | Path | Purpose |
 | --- | --- |
-| `index.html` | The entire site — markup + inline CSS, no dependencies to build. |
+| `index.html` | English page (`/`) — markup only. |
+| `ja/index.html` | Japanese page (`/ja/`) — same structure, translated copy. |
+| `assets/site.css` | All styling for both pages, including the `html[lang="ja"]` overrides. |
+| `assets/flap.js` | The scramble animation on the cycling word. |
 | `assets/` | Logo wordmarks (white-on-dark is used on the live page). |
 | `favicon.svg` | Angular "E" mark. |
 | `CNAME` | Tells GitHub Pages to serve on the custom domain `enclave.jp`. |
 | `.nojekyll` | Skips Jekyll processing so files/folders are served verbatim. |
 
-Type: [Fraunces](https://fonts.google.com/specimen/Fraunces) (editorial display serif) for the copy, [Spline Sans Mono](https://fonts.google.com/specimen/Spline+Sans+Mono) for the contact line. Both free via Google Fonts.
+The CSS and JS are shared files rather than inlined per page, so a style or
+animation change lands on both languages at once. Only the copy, the `<head>`
+metadata and the active side of the `EN / 日本語` switcher differ between them.
+
+## Languages
+
+`/` is English, `/ja/` is Japanese. Both pages carry `hreflang` alternates
+(with English as `x-default`) and link to each other through the small
+switcher sitting on the top right of the content column.
+
+Japanese copy needs a CJK face — the Latin fonts have no kanji or kana — so
+`ja/index.html` additionally loads Noto Serif JP and Noto Sans JP, and
+`site.css` gives it looser leading, non-negative tracking, and full-width
+(`1em`) cells for the scramble word instead of the half-width `1ch` the mono
+face gives Latin. Adding another language means copying `ja/index.html`,
+translating it, and adding the `hreflang` line to every page.
+
+Type: [Fraunces](https://fonts.google.com/specimen/Fraunces) (editorial display serif) for the copy, [Spline Sans Mono](https://fonts.google.com/specimen/Spline+Sans+Mono) for the contact line, and [Noto Serif JP / Noto Sans JP](https://fonts.google.com/noto) for Japanese. All free via Google Fonts.
 
 ## Deploy to GitHub Pages
 
@@ -48,5 +68,5 @@ Until DNS resolves, the site is also reachable at `https://<username>.github.io/
 ## Local preview
 
 ```sh
-python3 -m http.server 8000   # then open http://localhost:8000
+python3 -m http.server 8000   # then open http://localhost:8000 (and /ja/)
 ```

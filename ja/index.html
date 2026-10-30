@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ENCLAVE — 憶測ではなく、証拠にもとづく投資判断を</title>
-  <meta name="description" content="ENCLAVEは、クライアントとともに投資すべき課題を見定め、そのためのアイデアをプロトタイプにして、世の中で試します。" />
+  <title>ENCLAVE — ものづくり型戦略</title>
+  <meta name="description" content="ENCLAVEは、クライアントが学べるよう、体験・プロダクト・提供価値・ブランド・ビジネスモデルをプロトタイプします。" />
 
   <!-- Open Graph / social -->
   <meta property="og:type" content="website" />
   <meta property="og:title" content="ENCLAVE" />
-  <meta property="og:description" content="もっともらしい答えは、いくらでも手に入ります。どれが正しいかを知るには、実験が必要です。" />
+  <meta property="og:description" content="クライアントが学べるよう、体験・プロダクト・提供価値・ブランド・ビジネスモデルをプロトタイプします。" />
   <meta property="og:url" content="https://enclave.jp/ja/" />
   <meta property="og:image" content="https://enclave.jp/assets/enclavelogo-black.png" />
   <meta property="og:locale" content="ja_JP" />
@@ -31,21 +31,24 @@
   <link rel="stylesheet" href="../assets/site.css" />
 </head>
 <body>
-  <main>
+  <header class="top">
     <nav class="lang" aria-label="言語">
       <a href="../" hreflang="en" lang="en">EN</a>
       <span class="sep" aria-hidden="true">/</span>
       <span class="current" aria-current="true">日本語</span>
     </nav>
+  </header>
 
+  <div class="hero" aria-hidden="true">
+    <canvas id="ember"></canvas>
+    <svg class="e-still" viewBox="-2 -2 186.26 151" aria-hidden="true"><polygon points="12.86,0 182.26,0 180.95,15 64.05,15 60.03,61 104.23,61 102.87,76.5 58.67,76.5 53.81,132 170.91,132 169.6,147 0,147" fill="none" stroke="currentColor" stroke-width="1.2" vector-effect="non-scaling-stroke" /></svg>
+  </div>
+
+  <main>
     <img class="logo" src="../assets/enclavelogo-transparent-noborder.png" alt="ENCLAVE" width="1416" height="147" />
     <p class="tagline">ものづくり型戦略</p>
 
-    <p class="lead">クライアントとともに投資すべき課題を見定め、そのためのアイデアをプロトタイプにして、世の中で試します。</p>
-
-    <p class="support">もっともらしい答えは、いくらでも手に入ります。どれが正しいかを知るには、実験が必要です。</p>
-
-    <p class="support">だから、<span class="flap" aria-label="体験、プロダクト、提供価値、ブランド、ビジネスモデル" data-words="体験|プロダクト|提供価値|ブランド|ビジネスモデル" data-glyphs="アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン〇◆◇■□">体験</span>のプロトタイプをつくり、人に試してもらって、言葉ではなく行動から学びます。</p>
+    <p class="lead">クライアントが学べるよう、<span class="flap" aria-label="体験、プロダクト、提供価値、ブランド、ビジネスモデル" data-words="体験|プロダクト|提供価値|ブランド|ビジネスモデル" data-glyphs="アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン〇◆◇■□">体験</span>をプロトタイプします。</p>
 
     <div class="contact">
       <span class="label">お問い合わせ</span>
@@ -54,5 +57,6 @@
   </main>
 
   <script src="../assets/flap.js"></script>
+  <script src="../assets/ember.js"></script>
 </body>
 </html>

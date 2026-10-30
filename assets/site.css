@@ -9,6 +9,8 @@
   --mono: "Spline Sans Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --cjk-serif: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --cjk-sans: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  --gutter: clamp(1.75rem, 5vw, 5rem);
+  --column: 47rem;
 }
 
 * { box-sizing: border-box; }
@@ -17,11 +19,6 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
-  min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: clamp(1.75rem, 5vw, 5rem);
   background: var(--bg);
   color: var(--ink);
   font-family: var(--serif);
@@ -31,18 +28,58 @@ body {
   background-image: radial-gradient(120% 90% at 50% -10%, #141414 0%, #0a0a0a 60%);
 }
 
-main {
-  width: 100%;
-  max-width: 47rem;
+/* The burning E fills the first screen; the wordmark and the line sit below,
+   their top edge just showing so the page reads as more than one screen. */
+.hero {
+  position: relative;
+  /* On portrait phones the E is width-bound, so the height follows the width. */
+  height: min(80svh, 125vw);
+  min-height: 22rem;
 }
 
-/* Language switcher — sits on the content column, not the viewport edge */
+.hero canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Without WebGL (or JS) the E is a still outline. */
+.e-still {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(74vw, 61svh);
+  height: auto;
+  transform: translate(-50%, -50%);
+  color: rgba(237, 237, 234, 0.5);
+}
+.has-ember .e-still { display: none; }
+
+main {
+  max-width: calc(var(--column) + 2 * var(--gutter));
+  margin: 0 auto;
+  padding: 0 var(--gutter) clamp(4rem, 10vw, 7rem);
+}
+
+/* Language switcher — over the hero, on the content column's right edge */
+.top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+}
+
 .lang {
   display: flex;
   justify-content: flex-end;
   align-items: baseline;
   gap: 0.55rem;
-  margin: 0 0 clamp(1.5rem, 4vw, 2.25rem);
+  max-width: calc(var(--column) + 2 * var(--gutter));
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3vw, 2rem) var(--gutter) 0;
   font-family: var(--mono);
   font-size: 0.72rem;
   font-weight: 400;
@@ -112,20 +149,6 @@ main {
   letter-spacing: -0.016em;
   color: var(--ink);
   text-wrap: pretty;
-}
-
-.support {
-  margin: clamp(1.75rem, 3.5vw, 2.4rem) 0 0;
-  font-weight: 380;
-  font-size: clamp(1rem, 0.92rem + 0.5vw, 1.2rem);
-  line-height: 1.55;
-  letter-spacing: -0.006em;
-  color: var(--ink-dim);
-  text-wrap: pretty;
-}
-
-.support + .support {
-  margin-top: clamp(1rem, 2vw, 1.3rem);
 }
 
 /* Exotic-ASCII scramble cycling word */
@@ -215,13 +238,6 @@ html[lang="ja"] .lead {
   font-size: clamp(1.3rem, 1rem + 1.3vw, 1.75rem);
   line-height: 1.62;
   letter-spacing: 0.01em;
-  line-break: strict;
-}
-
-html[lang="ja"] .support {
-  font-weight: 350;
-  line-height: 1.85;
-  letter-spacing: 0.012em;
   line-break: strict;
 }
 

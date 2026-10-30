@@ -23,6 +23,10 @@
   const SPARKS = 70;   // sparks per second while cutting
   const TRAIL = 1.3;   // seconds for the burn trail to fade to 1/e
   const FADE_STEP = 1 / 30;  // the fade runs at a fixed rate, see fade()
+  const HOT = 3;       // bloom follows brightness to this power: only the hottest light blooms
+  // Bloom strength per pyramid level, finest to widest. Weighting the wide
+  // levels up is what makes the light reach far.
+  const BLOOM = [3, 11, 36, 100];
 
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const gl = canvas.getContext("webgl", { antialias: false, alpha: true, premultipliedAlpha: true });
@@ -35,19 +39,22 @@
     varying vec2 vUv;
     void main() { vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }`;
 
-  // 13-tap Gaussian along one axis. Rendering into a smaller target also downsamples.
+  // 13-tap Gaussian along one axis. Rendering into a smaller target also
+  // downsamples. uPow raises each sample before blurring, so the brightest
+  // light dominates the glow; uGain scales the result.
   const blurFrag = `
     precision mediump float;
     uniform sampler2D uSrc;
     uniform vec2 uStep;
+    uniform float uPow;
     uniform float uGain;
     varying vec2 vUv;
     void main() {
       vec4 sum = vec4(0.0);
       float wsum = 0.0;
       for (int i = -6; i <= 6; i++) {
-        float w = exp(-float(i * i) / 18.0);
-        sum += texture2D(uSrc, vUv + uStep * float(i)) * w;
+        float w = exp(-float(i * i) / 8.0);  // sigma of 2 taps, ~1% at the ends
+        sum += pow(texture2D(uSrc, vUv + uStep * float(i)), vec4(uPow)) * w;
         wsum += w;
       }
       gl_FragColor = sum / wsum * uGain;
@@ -55,10 +62,13 @@
 
   const burnFrag = `
     precision highp float;
-    uniform sampler2D uMask;  // outline and dot, sharp
-    uniform sampler2D uSoft;  // light blur
-    uniform sampler2D uMid;   // mid glow
-    uniform sampler2D uWide;  // wide glow
+    uniform sampler2D uMask;  // the line and the laser, sharp
+    uniform sampler2D uSoft;  // light blur of the line
+    uniform sampler2D uB1;    // bloom pyramid, finest to widest
+    uniform sampler2D uB2;
+    uniform sampler2D uB3;
+    uniform sampler2D uB4;
+    uniform vec4 uBloomW;     // per-level bloom weight, with each level's storage gain undone
     uniform vec2 uRes;
     uniform float uTime;
     uniform vec2 uPointer;
@@ -72,11 +82,6 @@
       return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x),
                  mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
     }
-    float fbm(vec2 p) {
-      float v = 0.0, a = 0.5;
-      for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; }
-      return v;
-    }
 
     void main() {
       vec2 uv = vUv;
@@ -84,23 +89,14 @@
       vec2 p = vec2(uv.x * aspect, uv.y);
       float t = uTime;
 
-      // The halo is sampled through drifting noise so it wobbles like heat
-      // haze instead of sitting as a clean blur.
-      vec2 warp = vec2(fbm(p * 2.2 + vec2(t * 0.13, 0.0)), fbm(p * 2.2 + vec2(5.2, -t * 0.11))) - 0.5;
-      // The line: a fine, fast warp roughens and shimmers its edges, and an
-      // ember field makes it burn unevenly, hot spots crawling along it.
-      vec2 fine = vec2(fbm(p * 30.0 + vec2(0.0, t * 0.9)), fbm(p * 30.0 + vec2(7.7, -t * 0.8))) - 0.5;
-      float ember = 0.35 + 1.3 * fbm(p * 26.0 + vec2(-t * 0.7, t * 0.45));
-      float m = texture2D(uMask, uv + fine * 0.006 + warp * 0.003).r * ember;
-      float a = texture2D(uSoft, uv + fine * 0.009 + warp * 0.012).r * (0.6 + 0.4 * ember);
-      float b = texture2D(uMid, uv + warp * 0.03).r;
-      float c = texture2D(uWide, uv + warp * 0.07).r;
-      c *= 0.7 + 0.6 * fbm(p * 1.6 + vec2(-t * 0.3, t * 0.2));
-      float heat = m * 0.45 + a * 1.9 + b * 1.8 + c * 2.5;
-
-      // Smoulder: hot and cold patches drifting through the glow.
-      heat += 0.7 * smoothstep(0.45, 0.85, fbm(p * 3.0 + vec2(t * 0.07, -t * 0.05))) * c;
-      heat -= 0.4 * smoothstep(0.55, 0.9, fbm(p * 6.0 - t * 0.12)) * b;
+      // Light, not motion: the sharp line plus glows whose size and strength
+      // follow its brightness (see the blur levels), so the hot head blooms
+      // wide and the cooling trail barely glows.
+      float m = texture2D(uMask, uv).r;
+      float a = texture2D(uSoft, uv).r;
+      float bloom = dot(vec4(texture2D(uB1, uv).r, texture2D(uB2, uv).r,
+                             texture2D(uB3, uv).r, texture2D(uB4, uv).r), uBloomW);
+      float heat = m * 0.9 + a * 0.8 + bloom;
 
       heat *= 0.94 + 0.06 * sin(t * 0.7 + p.y * 2.0);              // breathing
       heat *= 0.86 + 0.14 * noise(vec2(t * 19.0, 0.5));             // flicker
@@ -111,12 +107,11 @@
 
       // Sensor grain, strongest where it burns hottest.
       float g = hash(gl_FragCoord.xy + floor(t * 24.0) * 17.0);
-      heat += (g - 0.5) * (0.015 + 0.18 * smoothstep(0.3, 1.0, heat));
+      heat += (g - 0.5) * (0.02 + 0.16 * smoothstep(0.04, 1.0, heat));  // also dithers the glow's 8-bit steps
 
-      // Black to white, eased so a cooling trail runs through the greys
-      // before it goes white. Output is premultiplied white, so the page
-      // background shows through.
-      float v = pow(smoothstep(0.02, 1.15, heat), 0.95);
+      // Exposure: heat past white doesn't clip, it spreads the burned-out
+      // core. Output is premultiplied white, so the page shows through.
+      float v = 1.0 - exp(-max(heat - 0.01, 0.0) * 2.0);
       // The canvas runs past the hero behind the text; fade out before its edges.
       v *= smoothstep(0.0, 0.18, uv.y) * smoothstep(0.0, 0.18, 1.0 - uv.y)
          * smoothstep(0.0, 0.08, uv.x) * smoothstep(0.0, 0.08, 1.0 - uv.x);
@@ -145,14 +140,14 @@
 
   let blur, burn;
   try {
-    blur = program(blurFrag, ["uSrc", "uStep", "uGain"]);
-    burn = program(burnFrag, ["uMask", "uSoft", "uMid", "uWide", "uRes", "uTime", "uPointer", "uPointerHeat"]);
+    blur = program(blurFrag, ["uSrc", "uStep", "uPow", "uGain"]);
+    burn = program(burnFrag, ["uMask", "uSoft", "uB1", "uB2", "uB3", "uB4", "uBloomW", "uRes", "uTime", "uPointer", "uPointerHeat"]);
   } catch (err) {
     console.warn(err);
     return;
   }
   gl.useProgram(burn.prog);
-  ["uMask", "uSoft", "uMid", "uWide"].forEach((name, i) => gl.uniform1i(burn.u[name], i));
+  ["uMask", "uSoft", "uB1", "uB2", "uB3", "uB4"].forEach((name, i) => gl.uniform1i(burn.u[name], i));
 
   // One big triangle covering the screen.
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
@@ -261,7 +256,7 @@
 
   // Engrave the stretch of outline the laser crossed since the last frame. The
   // line itself is exact; the burn shader makes it uneven.
-  function engrave(s0, s1, v = 235) {
+  function engrave(s0, s1, v = 160) {
     tc.globalCompositeOperation = "lighten";
     tc.lineCap = "round";
     tc.lineJoin = "round";
@@ -311,7 +306,8 @@
 
     if (power <= 0) return;
     // The laser flickers, and now and then sputters.
-    const f = power * (Math.random() < 0.08 ? 0.35 : 0.6 + 0.4 * Math.random());
+    // (gently: the bloom follows brightness to a power, which exaggerates it)
+    const f = power * (Math.random() < 0.04 ? 0.65 : 0.86 + 0.14 * Math.random());
     // Glare: a short cross streak through the head.
     const streak = (dx, dy, len, thick, peak) => {
       const g = m.createLinearGradient(x - dx * len, y - dy * len, x + dx * len, y + dy * len);
@@ -325,8 +321,8 @@
       m.lineTo(x + dx * len, y + dy * len);
       m.stroke();
     };
-    streak(1, 0, lw * 30 * f * (0.7 + 0.6 * Math.random()), lw * 1.6, 1);
-    streak(0, 1, lw * 12 * f * (0.7 + 0.6 * Math.random()), lw * 1.3, 0.7);
+    streak(1, 0, lw * 30 * f * (0.7 + 0.6 * Math.random()), lw * 1.3, 0.8);
+    streak(0, 1, lw * 12 * f * (0.7 + 0.6 * Math.random()), lw * 1.1, 0.55);
     // Head: small and white-hot; the blur passes turn it into the bloom.
     const r = lw * 7 * (0.85 + 0.3 * Math.random());
     const g = m.createRadialGradient(x, y, 0, x, y, r);
@@ -344,7 +340,7 @@
     const len = geo.per * 0.6, n = 48;
     clearTrail();
     for (let i = 0; i < n; i++) {
-      engrave(s - len * (n - i) / n, s - len * (n - i - 1) / n, Math.round(235 * Math.exp(-(n - i) / n * 2.5)));
+      engrave(s - len * (n - i) / n, s - len * (n - i - 1) / n, Math.round(160 * Math.exp(-(n - i) / n * 2.5)));
     }
     sparks = [];
     compose(...pointAt(s), 1);
@@ -352,7 +348,7 @@
 
   // ---------- Frame ----------
 
-  let levels = null;
+  let levels = null, bloomW = [0, 0, 0, 0];
   function resize() {
     const scale = Math.min(window.devicePixelRatio || 1, 2) * 0.75;
     const w = Math.max(1, Math.round(canvas.clientWidth * scale));
@@ -363,26 +359,39 @@
     layoutE(hero.clientHeight * scale);
     clearTrail();
 
-    // Three glow levels, each blurred from the one before at a lower resolution.
+    // soft: a light blur of the line as it is.
+    // b1-b4: a bloom pyramid, each level half the resolution of the one before
+    //   and blurred from it by a texel and a half, so the glow widens smoothly.
+    //   It starts from the line raised to a power, so the bloom is mostly the
+    //   hot laser head and fades fast as the trail cools.
     if (levels) levels.forEach(l => { freeTarget(l.tmp); freeTarget(l.out); });
-    // The wide halo is faint after that much blur, so it's stored amplified
-    // (gain) to keep its falloff smooth in 8 bits; the burn pass weighs it to suit.
-    levels = [[2, 0.03, 1], [4, 0.13, 1], [8, 0.5, 8]].map(([div, sigma, gain]) => ({
-      tmp: makeTarget(w / div, h / div),
-      out: makeTarget(w / div, h / div),
-      sigma: geo.eh * sigma,
-      gain,
+    // Each level is stored with gain (cumulative down the chain) so its faint
+    // falloff stays smooth in 8 bits; the burn pass divides it back out.
+    levels = [
+      { div: 2, pow: 1, gain: 1 },
+      { div: 4, pow: HOT, gain: 2 },
+      { div: 8, pow: 1, gain: 2.5 },
+      { div: 16, pow: 1, gain: 3 },
+      { div: 32, pow: 1, gain: 3 },
+    ].map(l => ({
+      ...l,
+      tmp: makeTarget(w / l.div, h / l.div),
+      out: makeTarget(w / l.div, h / l.div),
+      sigma: 1.5 * l.div,  // mask pixels
     }));
+    let stored = 1;
+    bloomW = levels.slice(1).map((l, i) => BLOOM[i] / (stored *= l.gain));
     return true;
   }
 
-  function blurPass(srcTex, dst, dx, dy, sigma, gain) {
+  function blurPass(srcTex, dst, dx, dy, sigma, pow, gain) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb);
     gl.viewport(0, 0, dst.w, dst.h);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, srcTex);
-    // sigma is in mask pixels; the shader's kernel spans three taps per sigma.
-    gl.uniform2f(blur.u.uStep, dx * sigma / 3 / mask.width, dy * sigma / 3 / mask.height);
+    // sigma is in mask pixels; the shader's kernel is two taps per sigma.
+    gl.uniform2f(blur.u.uStep, dx * sigma / 2 / mask.width, dy * sigma / 2 / mask.height);
+    gl.uniform1f(blur.u.uPow, pow);
     gl.uniform1f(blur.u.uGain, gain);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
@@ -394,11 +403,12 @@
 
     gl.useProgram(blur.prog);
     gl.uniform1i(blur.u.uSrc, 0);
-    let src = maskTex;
+    // Each level reads the one before (the first reads the mask).
+    let prev = maskTex;
     for (const l of levels) {
-      blurPass(src, l.tmp, 1, 0, l.sigma, 1);
-      blurPass(l.tmp.tex, l.out, 0, 1, l.sigma, l.gain);
-      src = l.out.tex;
+      blurPass(prev, l.tmp, 1, 0, l.sigma, l.pow, 1);
+      blurPass(l.tmp.tex, l.out, 0, 1, l.sigma, 1, l.gain);
+      prev = l.out.tex;
     }
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -410,6 +420,7 @@
       gl.activeTexture(gl.TEXTURE0 + i);
       gl.bindTexture(gl.TEXTURE_2D, tex);
     });
+    gl.uniform4fv(burn.u.uBloomW, bloomW);
     gl.uniform2f(burn.u.uRes, canvas.width, canvas.height);
     gl.uniform1f(burn.u.uTime, t);
     gl.uniform2f(burn.u.uPointer, pointerUv[0], pointerUv[1]);

@@ -50,7 +50,7 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(74vw, 61svh);
+  width: min(22vw, 18svh);
   height: auto;
   transform: translate(-50%, -50%);
   color: rgba(237, 237, 234, 0.5);

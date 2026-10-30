@@ -1,6 +1,6 @@
-// The burning E. The logo's E outline is drawn into a 2D mask with a hot dot
-// running round it; the mask fades a little every frame, so the dot leaves a
-// burn trail. WebGL blurs the mask into three glows and maps the heat through
+// The burning E. A hot dot traces the logo's E into a 2D mask, then rests;
+// the mask fades a little every frame, so the dot leaves a burn trail and the
+// E only exists as that trail. WebGL blurs the mask into three glows and maps the heat through
 // a black-and-white burn ramp (the thermal-type pipeline from the hackathon
 // invite, without the colour).
 (() => {
@@ -17,8 +17,10 @@
   ];
   const E_W = 182.26, E_H = 147;
 
-  const LAP = 12;      // seconds for the dot to go once round the outline
-  const TRAIL = 1.6;   // seconds for the burn trail to fade to 1/e
+  const SIZE = 0.3;    // the E's height, as a share of the largest that fits the hero
+  const TRACE = 4;     // seconds for the dot to trace the E once
+  const REST = 0.5;    // seconds it rests at the start before the next trace
+  const TRAIL = 2.6;   // seconds for the burn trail to fade to 1/e
   const FADE_STEP = 1 / 30;  // the fade runs at a fixed rate, see fade()
 
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -37,6 +39,7 @@
     precision mediump float;
     uniform sampler2D uSrc;
     uniform vec2 uStep;
+    uniform float uGain;
     varying vec2 vUv;
     void main() {
       vec4 sum = vec4(0.0);
@@ -46,7 +49,7 @@
         sum += texture2D(uSrc, vUv + uStep * float(i)) * w;
         wsum += w;
       }
-      gl_FragColor = sum / wsum;
+      gl_FragColor = sum / wsum * uGain;
     }`;
 
   const burnFrag = `
@@ -80,11 +83,15 @@
       vec2 p = vec2(uv.x * aspect, uv.y);
       float t = uTime;
 
+      // The halo is sampled through drifting noise so it wobbles like heat
+      // haze instead of sitting as a clean blur.
+      vec2 warp = vec2(fbm(p * 2.2 + vec2(t * 0.13, 0.0)), fbm(p * 2.2 + vec2(5.2, -t * 0.11))) - 0.5;
       float m = texture2D(uMask, uv).r;
-      float a = texture2D(uSoft, uv).r;
-      float b = texture2D(uMid, uv).r;
-      float c = texture2D(uWide, uv).r;
-      float heat = m * 0.5 + a * 0.5 + b * 1.1 + c * 1.7;
+      float a = texture2D(uSoft, uv + warp * 0.006).r;
+      float b = texture2D(uMid, uv + warp * 0.03).r;
+      float c = texture2D(uWide, uv + warp * 0.07).r;
+      c *= 0.7 + 0.6 * fbm(p * 1.6 + vec2(-t * 0.3, t * 0.2));
+      float heat = m * 0.5 + a * 0.75 + b * 1.1 + c * 0.9;
 
       // Smoulder: hot and cold patches drifting through the glow.
       heat += 0.7 * smoothstep(0.45, 0.85, fbm(p * 3.0 + vec2(t * 0.07, -t * 0.05))) * c;
@@ -129,7 +136,7 @@
 
   let blur, burn;
   try {
-    blur = program(blurFrag, ["uSrc", "uStep"]);
+    blur = program(blurFrag, ["uSrc", "uStep", "uGain"]);
     burn = program(burnFrag, ["uMask", "uSoft", "uMid", "uWide", "uRes", "uTime", "uPointer", "uPointerHeat"]);
   } catch (err) {
     console.warn(err);
@@ -179,7 +186,7 @@
 
   function layoutE() {
     const w = mask.width, h = mask.height;
-    const eh = Math.min(h * 0.62, w * 0.74 * E_H / E_W);
+    const eh = Math.min(h * 0.62, w * 0.74 * E_H / E_W) * SIZE;
     const k = eh / E_H;
     const ox = (w - E_W * k) / 2, oy = (h - E_H * k) / 2;
     const pts = E_PTS.map(([x, y]) => [ox + x * k, oy + y * k]);
@@ -188,7 +195,7 @@
     for (let i = 1; i < pts.length; i++) {
       cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     }
-    geo = { pts, cum, per: cum[cum.length - 1], eh, lw: Math.max(1, eh * 0.008) };
+    geo = { pts, cum, per: cum[cum.length - 1], eh, lw: Math.max(1, eh * 0.013) };
   }
 
   // Point at arc length s along the outline (wraps).
@@ -215,12 +222,6 @@
     m.lineTo(...pointAt(s1));
   }
 
-  function outlinePath() {
-    m.beginPath();
-    geo.pts.forEach(([x, y], i) => (i ? m.lineTo(x, y) : m.moveTo(x, y)));
-    m.closePath();
-  }
-
   function clearMask() {
     m.globalCompositeOperation = "source-over";
     m.fillStyle = "#000";
@@ -244,26 +245,6 @@
     for (let i = 0; i < steps; i++) m.fillRect(0, 0, mask.width, mask.height);
   }
 
-  // The outline itself: a dim line with brighter dashes crawling the other way
-  // round. Drawn with "lighten" so it never covers the burn trail.
-  function drawOutline(t) {
-    const lw = geo.lw;
-    m.globalCompositeOperation = "lighten";
-    m.lineJoin = "miter";
-    m.lineCap = "butt";
-    m.lineWidth = lw;
-    m.setLineDash([]);
-    m.strokeStyle = "rgb(70,70,70)";
-    outlinePath();
-    m.stroke();
-    m.setLineDash([lw * 1.4, lw * 5.5]);
-    m.lineDashOffset = t * lw * 4;
-    m.strokeStyle = "rgb(140,140,140)";
-    outlinePath();
-    m.stroke();
-    m.setLineDash([]);
-  }
-
   // The dot: burn the stretch of outline it covered since the last frame, then
   // a hot head on top.
   function drawDot(s0, s1) {
@@ -272,12 +253,12 @@
     m.lineCap = "round";
     m.lineJoin = "round";
     m.lineWidth = lw * 1.4;
-    m.strokeStyle = "rgb(185,185,185)";
+    m.strokeStyle = "rgb(200,200,200)";
     pathAlong(s0, s1);
     m.stroke();
     // Small and hot; the blur passes turn it into the bloom.
     const [x, y] = pointAt(s1);
-    const r = lw * 3;
+    const r = lw * 4;
     const g = m.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, "rgba(255,255,255,1)");
     g.addColorStop(0.5, "rgba(255,255,255,0.8)");
@@ -290,7 +271,7 @@
 
   // A still frame's trail, drawn in one go: segments brightening towards the head.
   function drawStillTrail(s) {
-    const len = geo.per / LAP * TRAIL * 2.5, n = 48;
+    const len = geo.per * 0.6, n = 48;
     m.globalCompositeOperation = "lighten";
     m.lineCap = "round";
     m.lineWidth = geo.lw * 1.6;
@@ -318,21 +299,25 @@
 
     // Three glow levels, each blurred from the one before at a lower resolution.
     if (levels) levels.forEach(l => { freeTarget(l.tmp); freeTarget(l.out); });
-    levels = [[2, 0.012], [4, 0.05], [8, 0.16]].map(([div, sigma]) => ({
+    // The wide halo is faint after that much blur, so it's stored amplified
+    // (gain) to keep its falloff smooth in 8 bits; the burn pass weighs it to suit.
+    levels = [[2, 0.035, 1], [4, 0.14, 1], [8, 0.5, 7]].map(([div, sigma, gain]) => ({
       tmp: makeTarget(w / div, h / div),
       out: makeTarget(w / div, h / div),
       sigma: geo.eh * sigma,
+      gain,
     }));
     return true;
   }
 
-  function blurPass(srcTex, dst, dx, dy, sigma) {
+  function blurPass(srcTex, dst, dx, dy, sigma, gain) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fb);
     gl.viewport(0, 0, dst.w, dst.h);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, srcTex);
     // sigma is in mask pixels; the shader's kernel spans three taps per sigma.
     gl.uniform2f(blur.u.uStep, dx * sigma / 3 / mask.width, dy * sigma / 3 / mask.height);
+    gl.uniform1f(blur.u.uGain, gain);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
@@ -345,8 +330,8 @@
     gl.uniform1i(blur.u.uSrc, 0);
     let src = maskTex;
     for (const l of levels) {
-      blurPass(src, l.tmp, 1, 0, l.sigma);
-      blurPass(l.tmp.tex, l.out, 0, 1, l.sigma);
+      blurPass(src, l.tmp, 1, 0, l.sigma, 1);
+      blurPass(l.tmp.tex, l.out, 0, 1, l.sigma, l.gain);
       src = l.out.tex;
     }
 
@@ -374,17 +359,24 @@
     lastMove = performance.now();
   }, { passive: true });
 
-  // Start the dot just past the top-left corner, heading right along the top.
-  const START = 0.02;
+  // Arc length at time t: each cycle traces the E once from the top-left
+  // corner, easing in and out (sine), then rests there. Laps accumulate so the
+  // value only ever grows, which keeps pathAlong() simple.
+  function arcAt(t) {
+    const n = Math.floor(t / (TRACE + REST));
+    const k = Math.min(1, (t - n * (TRACE + REST)) / TRACE);
+    const eased = k - Math.sin(2 * Math.PI * k) / (2 * Math.PI);
+    return (n + eased) * geo.per;
+  }
+
   let start = performance.now(), last = start, sLast = 0;
 
   function step(now) {
     const t = (now - start) / 1000;
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
-    const s = (START + t / LAP) * geo.per;
+    const s = arcAt(t);
     fade(dt);
-    drawOutline(t);
     // After a pause (tab hidden, hero scrolled away) don't burn the whole gap.
     drawDot(sLast > 0 && s > sLast && s - sLast < geo.per * 0.1 ? sLast : s, s);
     sLast = s;
@@ -397,8 +389,7 @@
 
   function renderStill() {
     clearMask();
-    drawOutline(0);
-    drawStillTrail((START + 0.35) * geo.per);
+    drawStillTrail(geo.per * 0.7);
     render(0, [0.5, 0.5], 0);
   }
 

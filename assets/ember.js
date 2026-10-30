@@ -1,6 +1,6 @@
-// The burning E. A hot dot traces the logo's E into a 2D mask, then rests;
-// the mask fades a little every frame, so the dot leaves a burn trail and the
-// E only exists as that trail. WebGL blurs the mask into three glows and maps the heat through
+// The burning E. A laser traces the logo's E, throwing sparks, then switches
+// off and rests; the line it engraves fades a little every frame, so the E
+// only ever exists as that cooling trail. WebGL blurs the mask into three glows and maps the heat through
 // a black-and-white burn ramp (the thermal-type pipeline from the hackathon
 // invite, without the colour).
 (() => {
@@ -17,9 +17,10 @@
   ];
   const E_W = 182.26, E_H = 147;
 
-  const SIZE = 0.3;    // the E's height, as a share of the largest that fits the hero
+  const SIZE = 0.42;   // the E's height, as a share of the hero's height
   const TRACE = 4;     // seconds for the dot to trace the E once
-  const REST = 0.5;    // seconds it rests at the start before the next trace
+  const REST = 0.5;    // seconds the laser is off before the next trace
+  const SPARKS = 70;   // sparks per second while cutting
   const TRAIL = 2.6;   // seconds for the burn trail to fade to 1/e
   const FADE_STEP = 1 / 30;  // the fade runs at a fixed rate, see fade()
 
@@ -91,7 +92,7 @@
       float b = texture2D(uMid, uv + warp * 0.03).r;
       float c = texture2D(uWide, uv + warp * 0.07).r;
       c *= 0.7 + 0.6 * fbm(p * 1.6 + vec2(-t * 0.3, t * 0.2));
-      float heat = m * 0.5 + a * 0.75 + b * 1.1 + c * 0.9;
+      float heat = m * 0.9 + a * 1.4 + b * 1.6 + c * 2.5;
 
       // Smoulder: hot and cold patches drifting through the glow.
       heat += 0.7 * smoothstep(0.45, 0.85, fbm(p * 3.0 + vec2(t * 0.07, -t * 0.05))) * c;
@@ -110,7 +111,10 @@
       // Black to white, eased so a cooling trail runs through the greys
       // before it goes white. Output is premultiplied white, so the page
       // background shows through.
-      float v = pow(smoothstep(0.03, 1.15, heat), 1.3);
+      float v = pow(smoothstep(0.02, 1.15, heat), 0.95);
+      // The canvas runs past the hero behind the text; fade out before its edges.
+      v *= smoothstep(0.0, 0.18, uv.y) * smoothstep(0.0, 0.18, 1.0 - uv.y)
+         * smoothstep(0.0, 0.08, uv.x) * smoothstep(0.0, 0.08, 1.0 - uv.x);
       gl_FragColor = vec4(v, v, v, v);
     }`;
 
@@ -180,13 +184,18 @@
 
   // ---------- The E, in mask pixels ----------
 
+  // Two layers. `trail` holds the engraved line and fades every frame; `mask`
+  // is what goes to the GPU: the trail plus the laser's head, glare and
+  // sparks, redrawn from scratch each frame so none of them persist.
+  const trail = document.createElement("canvas");
+  const tc = trail.getContext("2d");
   const mask = document.createElement("canvas");
   const m = mask.getContext("2d");
-  let geo = null;  // { pts, cum, per, lw }
+  let geo = null;  // { pts, cum, per, eh, lw }
 
-  function layoutE() {
+  function layoutE(heroH) {
     const w = mask.width, h = mask.height;
-    const eh = Math.min(h * 0.62, w * 0.74 * E_H / E_W) * SIZE;
+    const eh = Math.min(heroH * SIZE, w * 0.5 * E_H / E_W);
     const k = eh / E_H;
     const ox = (w - E_W * k) / 2, oy = (h - E_H * k) / 2;
     const pts = E_PTS.map(([x, y]) => [ox + x * k, oy + y * k]);
@@ -195,7 +204,7 @@
     for (let i = 1; i < pts.length; i++) {
       cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     }
-    geo = { pts, cum, per: cum[cum.length - 1], eh, lw: Math.max(1, eh * 0.013) };
+    geo = { pts, cum, per: cum[cum.length - 1], eh, lw: Math.max(1, eh * 0.007) };
   }
 
   // Point at arc length s along the outline (wraps).
@@ -209,23 +218,23 @@
   }
 
   // Path along the outline from s0 forward to s1, turning the corners.
-  function pathAlong(s0, s1) {
+  function pathAlong(ctx, s0, s1) {
     const { pts, cum, per } = geo;
-    m.beginPath();
-    m.moveTo(...pointAt(s0));
+    ctx.beginPath();
+    ctx.moveTo(...pointAt(s0));
     for (let lap = Math.floor(s0 / per) * per; lap < s1; lap += per) {
       for (let i = 1; i < pts.length; i++) {
         const s = lap + cum[i];
-        if (s > s0 && s < s1) m.lineTo(pts[i][0], pts[i][1]);
+        if (s > s0 && s < s1) ctx.lineTo(pts[i][0], pts[i][1]);
       }
     }
-    m.lineTo(...pointAt(s1));
+    ctx.lineTo(...pointAt(s1));
   }
 
-  function clearMask() {
-    m.globalCompositeOperation = "source-over";
-    m.fillStyle = "#000";
-    m.fillRect(0, 0, mask.width, mask.height);
+  function clearTrail() {
+    tc.globalCompositeOperation = "source-over";
+    tc.fillStyle = "#000";
+    tc.fillRect(0, 0, trail.width, trail.height);
   }
 
   // Exponential fade towards black. 8-bit values stall once a step would move
@@ -237,31 +246,85 @@
     if (fadeDebt < FADE_STEP) return;
     const steps = Math.min(8, Math.floor(fadeDebt / FADE_STEP));
     fadeDebt -= steps * FADE_STEP;
-    m.globalCompositeOperation = "source-over";
-    m.fillStyle = `rgba(0,0,0,${1 - Math.exp(-steps * FADE_STEP / TRAIL)})`;
-    m.fillRect(0, 0, mask.width, mask.height);
-    m.globalCompositeOperation = "difference";
-    m.fillStyle = "rgb(1,1,1)";
-    for (let i = 0; i < steps; i++) m.fillRect(0, 0, mask.width, mask.height);
+    tc.globalCompositeOperation = "source-over";
+    tc.fillStyle = `rgba(0,0,0,${1 - Math.exp(-steps * FADE_STEP / TRAIL)})`;
+    tc.fillRect(0, 0, trail.width, trail.height);
+    tc.globalCompositeOperation = "difference";
+    tc.fillStyle = "rgb(1,1,1)";
+    for (let i = 0; i < steps; i++) tc.fillRect(0, 0, trail.width, trail.height);
   }
 
-  // The dot: burn the stretch of outline it covered since the last frame, then
-  // a hot head on top.
-  function drawDot(s0, s1) {
+  // Engrave the stretch of outline the laser crossed since the last frame.
+  function engrave(s0, s1, v = 235) {
+    tc.globalCompositeOperation = "lighten";
+    tc.lineCap = "round";
+    tc.lineJoin = "round";
+    tc.lineWidth = geo.lw * 1.5;
+    tc.strokeStyle = `rgb(${v},${v},${v})`;
+    pathAlong(tc, s0, s1);
+    tc.stroke();
+  }
+
+  // Sparks thrown off the cut: a little upward kick, then gravity.
+  let sparks = [];
+  function updateSparks(dt, x, y, power) {
+    const eh = geo.eh;
+    let n = power > 0.5 ? dt * SPARKS * (0.5 + Math.random()) : 0;
+    while (n-- > Math.random()) {
+      const a = Math.random() * 2 * Math.PI, sp = eh * (0.3 + Math.random() * 1.3);
+      const life = 0.15 + Math.random() * 0.4;
+      sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - eh * 0.6, life, age: 0 });
+    }
+    for (const p of sparks) {
+      p.px = p.x; p.py = p.y;
+      p.vy += eh * 3.2 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.age += dt;
+    }
+    sparks = sparks.filter(p => p.age < p.life);
+  }
+
+  // The frame that goes to the GPU: the trail, then the live laser on top.
+  function compose(x, y, power) {
     const lw = geo.lw;
+    m.globalCompositeOperation = "source-over";
+    m.drawImage(trail, 0, 0);
     m.globalCompositeOperation = "lighten";
+
     m.lineCap = "round";
-    m.lineJoin = "round";
-    m.lineWidth = lw * 1.4;
-    m.strokeStyle = "rgb(200,200,200)";
-    pathAlong(s0, s1);
-    m.stroke();
-    // Small and hot; the blur passes turn it into the bloom.
-    const [x, y] = pointAt(s1);
-    const r = lw * 4;
+    for (const p of sparks) {
+      const v = Math.round(255 * Math.pow(1 - p.age / p.life, 1.5));
+      m.strokeStyle = `rgb(${v},${v},${v})`;
+      m.lineWidth = lw * 0.8;
+      m.beginPath();
+      m.moveTo(p.px, p.py);
+      m.lineTo(p.x, p.y);
+      m.stroke();
+    }
+
+    if (power <= 0) return;
+    const f = power * (0.85 + 0.15 * Math.random());  // the laser flickers
+    // Glare: a short cross streak through the head.
+    const streak = (dx, dy, len, thick, peak) => {
+      const g = m.createLinearGradient(x - dx * len, y - dy * len, x + dx * len, y + dy * len);
+      g.addColorStop(0, "rgba(255,255,255,0)");
+      g.addColorStop(0.5, `rgba(255,255,255,${peak * f})`);
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      m.strokeStyle = g;
+      m.lineWidth = thick;
+      m.beginPath();
+      m.moveTo(x - dx * len, y - dy * len);
+      m.lineTo(x + dx * len, y + dy * len);
+      m.stroke();
+    };
+    streak(1, 0, lw * 30 * f, lw * 1.1, 0.8);
+    streak(0, 1, lw * 12 * f, lw * 0.9, 0.55);
+    // Head: small and white-hot; the blur passes turn it into the bloom.
+    const r = lw * 5 * (0.9 + 0.2 * Math.random());
     const g = m.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, "rgba(255,255,255,1)");
-    g.addColorStop(0.5, "rgba(255,255,255,0.8)");
+    g.addColorStop(0, `rgba(255,255,255,${f})`);
+    g.addColorStop(0.45, `rgba(255,255,255,${0.85 * f})`);
     g.addColorStop(1, "rgba(255,255,255,0)");
     m.fillStyle = g;
     m.beginPath();
@@ -270,38 +333,34 @@
   }
 
   // A still frame's trail, drawn in one go: segments brightening towards the head.
-  function drawStillTrail(s) {
+  function drawStill(s) {
     const len = geo.per * 0.6, n = 48;
-    m.globalCompositeOperation = "lighten";
-    m.lineCap = "round";
-    m.lineWidth = geo.lw * 1.6;
+    clearTrail();
     for (let i = 0; i < n; i++) {
-      const v = Math.round(255 * Math.exp(-(n - i) / n * 2.5));
-      m.strokeStyle = `rgb(${v},${v},${v})`;
-      pathAlong(s - len * (n - i) / n, s - len * (n - i - 1) / n);
-      m.stroke();
+      engrave(s - len * (n - i) / n, s - len * (n - i - 1) / n, Math.round(235 * Math.exp(-(n - i) / n * 2.5)));
     }
-    drawDot(s, s);
+    sparks = [];
+    compose(...pointAt(s), 1);
   }
 
   // ---------- Frame ----------
 
   let levels = null;
   function resize() {
-    const scale = Math.min(window.devicePixelRatio || 1, 2) * 0.6;
-    const w = Math.max(1, Math.round(hero.clientWidth * scale));
-    const h = Math.max(1, Math.round(hero.clientHeight * scale));
+    const scale = Math.min(window.devicePixelRatio || 1, 2) * 0.75;
+    const w = Math.max(1, Math.round(canvas.clientWidth * scale));
+    const h = Math.max(1, Math.round(canvas.clientHeight * scale));
     if (w === canvas.width && h === canvas.height && geo) return false;
-    canvas.width = mask.width = w;
-    canvas.height = mask.height = h;
-    layoutE();
-    clearMask();
+    canvas.width = mask.width = trail.width = w;
+    canvas.height = mask.height = trail.height = h;
+    layoutE(hero.clientHeight * scale);
+    clearTrail();
 
     // Three glow levels, each blurred from the one before at a lower resolution.
     if (levels) levels.forEach(l => { freeTarget(l.tmp); freeTarget(l.out); });
     // The wide halo is faint after that much blur, so it's stored amplified
     // (gain) to keep its falloff smooth in 8 bits; the burn pass weighs it to suit.
-    levels = [[2, 0.035, 1], [4, 0.14, 1], [8, 0.5, 7]].map(([div, sigma, gain]) => ({
+    levels = [[2, 0.018, 1], [4, 0.11, 1], [8, 0.5, 8]].map(([div, sigma, gain]) => ({
       tmp: makeTarget(w / div, h / div),
       out: makeTarget(w / div, h / div),
       sigma: geo.eh * sigma,
@@ -354,19 +413,23 @@
   // Pointer over the hero, eased.
   let target = [0.5, 0.5], pointer = [0.5, 0.5], pointerHeat = 0, lastMove = -1e9;
   hero.addEventListener("pointermove", e => {
-    const r = hero.getBoundingClientRect();
+    const r = canvas.getBoundingClientRect();
     target = [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
     lastMove = performance.now();
   }, { passive: true });
 
-  // Arc length at time t: each cycle traces the E once from the top-left
-  // corner, easing in and out (sine), then rests there. Laps accumulate so the
-  // value only ever grows, which keeps pathAlong() simple.
-  function arcAt(t) {
-    const n = Math.floor(t / (TRACE + REST));
-    const k = Math.min(1, (t - n * (TRACE + REST)) / TRACE);
+  // Each cycle the laser traces the E once from the top-left corner, easing
+  // in and out (sine), then switches off and rests. Arc length accumulates over
+  // laps so it only ever grows, which keeps pathAlong() simple. Power is the
+  // laser's on/off, with a short fade either side.
+  function traceAt(t) {
+    const cycle = TRACE + REST;
+    const n = Math.floor(t / cycle);
+    const local = t - n * cycle;
+    const k = Math.min(1, local / TRACE);
     const eased = k - Math.sin(2 * Math.PI * k) / (2 * Math.PI);
-    return (n + eased) * geo.per;
+    const power = Math.min(1, local / 0.06, Math.max(0, (TRACE + 0.08 - local) / 0.08));
+    return { s: (n + eased) * geo.per, power };
   }
 
   let start = performance.now(), last = start, sLast = 0;
@@ -375,11 +438,14 @@
     const t = (now - start) / 1000;
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
-    const s = arcAt(t);
+    const { s, power } = traceAt(t);
     fade(dt);
-    // After a pause (tab hidden, hero scrolled away) don't burn the whole gap.
-    drawDot(sLast > 0 && s > sLast && s - sLast < geo.per * 0.1 ? sLast : s, s);
+    // After a pause (tab hidden, hero scrolled away) don't engrave the whole gap.
+    if (power > 0 && s > sLast && s - sLast < geo.per * 0.1) engrave(sLast, s);
     sLast = s;
+    const [x, y] = pointAt(s);
+    updateSparks(dt, x, y, power);
+    compose(x, y, power);
 
     pointer[0] += (target[0] - pointer[0]) * 0.08;
     pointer[1] += (target[1] - pointer[1]) * 0.08;
@@ -388,8 +454,7 @@
   }
 
   function renderStill() {
-    clearMask();
-    drawStillTrail(geo.per * 0.7);
+    drawStill(geo.per * 0.7);
     render(0, [0.5, 0.5], 0);
   }
 

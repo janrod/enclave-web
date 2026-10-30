@@ -19,6 +19,7 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
+  min-height: 100dvh;  /* or the background gradient repeats below short pages */
   background: var(--bg);
   color: var(--ink);
   font-family: var(--serif);
@@ -33,16 +34,21 @@ body {
 .hero {
   position: relative;
   /* On portrait phones the E is width-bound, so the height follows the width. */
-  height: min(80svh, 125vw);
-  min-height: 22rem;
+  height: min(50svh, 90vw);
+  min-height: 16rem;
 }
 
+/* The canvas runs past the hero top and bottom so the halo can fall off
+   behind the text instead of being cut at the hero's edge. */
 .hero canvas {
   position: absolute;
-  inset: 0;
+  top: -25%;
+  bottom: -25%;
+  left: 0;
   width: 100%;
-  height: 100%;
+  height: 150%;
   display: block;
+  pointer-events: none;
 }
 
 /* Without WebGL (or JS) the E is a still outline. */
@@ -50,7 +56,7 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(22vw, 18svh);
+  width: min(45vw, 26svh);
   height: auto;
   transform: translate(-50%, -50%);
   color: rgba(237, 237, 234, 0.5);
@@ -58,6 +64,8 @@ body {
 .has-ember .e-still { display: none; }
 
 main {
+  position: relative;
+  z-index: 1;
   max-width: calc(var(--column) + 2 * var(--gutter));
   margin: 0 auto;
   padding: 0 var(--gutter) clamp(4rem, 10vw, 7rem);

@@ -10,7 +10,7 @@ Static landing page for **ENCLAVE**, in English and Japanese. No build step, hos
 | `ja/index.html` | Japanese page (`/ja/`) — same structure, translated copy. |
 | `assets/site.css` | All styling for both pages, including the `html[lang="ja"]` overrides. |
 | `assets/flap.js` | The scramble animation on the cycling word. |
-| `assets/ember.js` | The burning E in the hero: the logo's E outline with a dot running round it, rendered through a black-and-white burn shader in WebGL. Falls back to a still SVG outline without WebGL, and to a still frame with reduced motion. |
+| `assets/ember.js` | The burning E in the hero: a laser traces the logo's E, throwing sparks, and the engraved line cools through a black-and-white burn shader in WebGL. Falls back to a still SVG outline without WebGL, and to a still frame with reduced motion. |
 | `assets/` | Logo wordmarks (white-on-dark is used on the live page). |
 | `favicon.svg` | Angular "E" mark. |
 | `CNAME` | Tells GitHub Pages to serve on the custom domain `enclave.jp`. |

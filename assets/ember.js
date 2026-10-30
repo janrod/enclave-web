@@ -40,6 +40,7 @@
   const BLANK = 6;     // font units either side of a jump between outlines where the beam dims
   const SPARKS = 70;   // sparks per second while cutting
   const TRAIL = 0.3;   // seconds for the burn trail to fade to 1/e
+  const SCAR = 0.09;   // brightness of the faint outline the first pass leaves behind, so the logo stays readable
   const FADE_STEP = 1 / 30;  // the fade runs at a fixed rate, see fade()
   const HOT = 3;       // bloom follows brightness to this power: only the hottest light blooms
   // Bloom strength per pyramid level, finest to widest. Weighting the wide
@@ -85,6 +86,7 @@
     uniform sampler2D uB2;
     uniform sampler2D uB3;
     uniform sampler2D uB4;
+    uniform sampler2D uScar;  // the outline the first pass leaves, sharp
     uniform vec4 uBloomW;     // per-level bloom weight, with each level's storage gain undone
     uniform vec2 uRes;
     uniform float uTime;
@@ -129,6 +131,8 @@
       // Exposure: heat past white doesn't clip, it spreads the burned-out
       // core. Output is premultiplied white, so the page shows through.
       float v = 1.0 - exp(-max(heat - 0.01, 0.0) * 2.0);
+      // The scar sits under the light, steady: no flicker, no grain, no bloom.
+      v += texture2D(uScar, uv).a * ${SCAR.toFixed(3)} * (1.0 - v);
       // The canvas ends behind the text; fade out before its edges.
       v *= smoothstep(0.0, 0.25, uv.y) * smoothstep(0.0, 0.06, 1.0 - uv.y)
          * smoothstep(0.0, 0.08, uv.x) * smoothstep(0.0, 0.08, 1.0 - uv.x);
@@ -158,14 +162,14 @@
   let blur, burn;
   try {
     blur = program(blurFrag, ["uSrc", "uStep", "uPow", "uGain"]);
-    burn = program(burnFrag, ["uMask", "uSoft", "uB1", "uB2", "uB3", "uB4", "uBloomW", "uRes", "uTime", "uPointer", "uPointerHeat"]);
+    burn = program(burnFrag, ["uMask", "uSoft", "uB1", "uB2", "uB3", "uB4", "uScar", "uBloomW", "uRes", "uTime", "uPointer", "uPointerHeat"]);
   } catch (err) {
     console.warn(err);
     giveUp();
     return;
   }
   gl.useProgram(burn.prog);
-  ["uMask", "uSoft", "uB1", "uB2", "uB3", "uB4"].forEach((name, i) => gl.uniform1i(burn.u[name], i));
+  ["uMask", "uSoft", "uB1", "uB2", "uB3", "uB4", "uScar"].forEach((name, i) => gl.uniform1i(burn.u[name], i));
 
   // One big triangle covering the screen.
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
@@ -198,15 +202,20 @@
   function freeTarget(t) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fb); }
 
   const maskTex = makeTexture();
+  const scarTex = makeTexture();
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
   // ---------- The wordmark, in mask pixels ----------
 
-  // Two layers. `trail` holds the engraved line and fades every frame; `mask`
-  // is what goes to the GPU: the trail plus the laser's head, glare and
-  // sparks, redrawn from scratch each frame so none of them persist.
+  // Three layers. `trail` holds the engraved line and fades every frame;
+  // `mask` is what goes to the GPU: the trail plus the laser's head, glare and
+  // sparks, redrawn from scratch each frame so none of them persist. `scar`
+  // is the outline the first pass leaves behind, and never fades.
   const trail = document.createElement("canvas");
   const tc = trail.getContext("2d");
+  const scar = document.createElement("canvas");
+  const sc = scar.getContext("2d");
+  let scarS = 0, scarDirty = true;  // how far along the path the scar reaches
   const mask = document.createElement("canvas");
   const m = mask.getContext("2d");
   let geo = null;  // { pts, cum, jump, cuts, per, eh, k, lw }
@@ -304,6 +313,20 @@
     tc.stroke();
   }
 
+  // Extend the scar up to s, which stops growing after the first pass.
+  function scarTo(s) {
+    s = Math.min(s, geo.per);
+    if (s <= scarS) return;
+    sc.lineCap = "round";
+    sc.lineJoin = "round";
+    sc.lineWidth = geo.lw;
+    sc.strokeStyle = "#fff";
+    pathAlong(sc, scarS, s);
+    sc.stroke();
+    scarS = s;
+    scarDirty = true;
+  }
+
   // Sparks thrown off the cut: a little upward kick, then gravity.
   let sparks = [];
   function updateSparks(dt, x, y, power) {
@@ -380,10 +403,12 @@
     const scale = Math.min(window.devicePixelRatio || 1, 2) * 0.75;
     const w = Math.max(1, Math.round(canvas.clientWidth * scale));
     const h = Math.max(1, Math.round(canvas.clientHeight * scale));
-    canvas.width = mask.width = trail.width = w;
-    canvas.height = mask.height = trail.height = h;
+    canvas.width = mask.width = trail.width = scar.width = w;
+    canvas.height = mask.height = trail.height = scar.height = h;
     layoutLogo(scale);
     clearTrail();
+    scarS = 0;  // redrawn up to where the laser has got to on the next frame
+    scarDirty = true;
 
     // soft: a light blur of the line as it is.
     // b1-b4: a bloom pyramid, each level half the resolution of the one before
@@ -425,6 +450,11 @@
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, maskTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, mask);
+    if (scarDirty) {
+      gl.bindTexture(gl.TEXTURE_2D, scarTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, scar);
+      scarDirty = false;
+    }
 
     gl.useProgram(blur.prog);
     gl.uniform1i(blur.u.uSrc, 0);
@@ -441,7 +471,7 @@
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(burn.prog);
-    [maskTex, ...levels.map(l => l.out.tex)].forEach((tex, i) => {
+    [maskTex, ...levels.map(l => l.out.tex), scarTex].forEach((tex, i) => {
       gl.activeTexture(gl.TEXTURE0 + i);
       gl.bindTexture(gl.TEXTURE_2D, tex);
     });
@@ -486,6 +516,7 @@
     fade(dt);
     // After a pause (tab hidden, hero scrolled away) don't engrave the whole gap.
     if (power > 0 && s > sLast && s - sLast < geo.per * 0.05) engrave(sLast, s);
+    scarTo(s);
     sLast = s;
     const [x, y] = pointAt(s, true);  // at a lap's end the head stays on the last E
     updateSparks(dt, x, y, power);

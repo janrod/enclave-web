@@ -1,36 +1,53 @@
-// The burning E. A laser traces the logo's E, throwing sparks, then switches
-// off and rests; the line it engraves fades a little every frame, so the E
-// only ever exists as that cooling trail. WebGL blurs the mask into three glows and maps the heat through
-// a black-and-white burn ramp (the thermal-type pipeline from the hackathon
-// invite, without the colour).
+// The burning wordmark. One laser traces every letter of the logo in turn,
+// throwing sparks, then switches off and rests; the line it engraves fades
+// fast, so the logo only ever exists as a short cooling trail. WebGL blooms
+// the light and maps it through a black-and-white burn ramp (the thermal-type
+// pipeline from the hackathon invite, without the colour).
 (() => {
   const hero = document.querySelector(".hero");
   const canvas = document.getElementById("ember");
-  if (!hero || !canvas) return;
+  const mark = document.querySelector(".mark");
+  const root = document.documentElement;
+  // The page's head script sets has-ember when it expects this to run.
+  if (!hero || !canvas || !mark || !root.classList.contains("has-ember")) return;
+  const giveUp = () => root.classList.remove("has-ember");  // shows the still logo
 
-  // The E from the wordmark, traced from the logo PNG (px, 147 tall) and
-  // squared up. Clockwise from the top-left corner; the font's italic shear is
-  // already in the coordinates.
-  const E_PTS = [
-    [12.86, 0], [182.26, 0], [180.95, 15], [64.05, 15], [60.03, 61], [104.23, 61],
-    [102.87, 76.5], [58.67, 76.5], [53.81, 132], [170.91, 132], [169.6, 147], [0, 147],
+  // The wordmark, traced from the logo PNG (147 px tall) and squared up, in
+  // upright font units: the font's italic shear is applied in layoutLogo().
+  // Each letter is one or more closed outlines, clockwise from the top left,
+  // with the letter's x offset.
+  const SHEAR = 12.86 / 147;
+  const LOGO_W = 1416, LOGO_H = 147;
+  const E = [[0, 0], [169.5, 0], [169.5, 15], [52.5, 15], [52.5, 61], [96.5, 61], [96.5, 76],
+    [52.5, 76], [52.5, 132], [169.5, 132], [169.5, 147], [0, 147]];
+  const LETTERS = [
+    [0, [E]],
+    [202, [[[0, 0], [52.5, 0], [136, 98.5], [136, 0], [188.5, 0], [188.5, 147], [136, 147],
+      [52.5, 48.5], [52.5, 147], [0, 147]]]],                                                // N
+    [426, [[[0, 0], [169.5, 0], [169.5, 15], [52.5, 15], [52.5, 132], [169.5, 132],
+      [169.5, 147], [0, 147]]]],                                                             // C
+    [628, [[[0, 0], [52.5, 0], [52.5, 132], [169.5, 132], [169.5, 147], [0, 147]]]],         // L
+    [830, [[[0, 0], [170, 0], [170, 147], [117.5, 147], [117.5, 76], [52.5, 76], [52.5, 147],
+      [0, 147]], [[52.5, 15], [117.5, 15], [117.5, 61], [52.5, 61]]]],                       // A
+    [1023.5, [[[0, 0], [52.5, 0], [93, 89.5], [133.5, 0], [186, 0], [119.5, 147],
+      [66.5, 147]]]],                                                                        // V
+    [1233.5, [E]],
   ];
-  const E_W = 182.26, E_H = 147;
 
-  const SIZE = 0.42;   // the E's height, as a share of the hero's height
-  const TRACE = 4;     // seconds for the dot to trace the E once
-  const REST = 0.5;    // seconds the laser is off before the next trace
+  const TRACE = 8;     // seconds for the laser to trace the whole logo once
+  const EASE = 0.7;    // 0 is an even pace, 1 a full sine ease in and out
+  const REST = 0.6;    // seconds the laser is off before the next trace
+  const BLANK = 6;     // font units either side of a jump between outlines where the beam dims
   const SPARKS = 70;   // sparks per second while cutting
-  const TRAIL = 1.3;   // seconds for the burn trail to fade to 1/e
+  const TRAIL = 0.3;   // seconds for the burn trail to fade to 1/e
   const FADE_STEP = 1 / 30;  // the fade runs at a fixed rate, see fade()
   const HOT = 3;       // bloom follows brightness to this power: only the hottest light blooms
   // Bloom strength per pyramid level, finest to widest. Weighting the wide
   // levels up is what makes the light reach far.
   const BLOOM = [3, 11, 36, 100];
 
-  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const gl = canvas.getContext("webgl", { antialias: false, alpha: true, premultipliedAlpha: true });
-  if (!gl) return;
+  if (!gl) { giveUp(); return; }
 
   // ---------- Shaders ----------
 
@@ -112,8 +129,8 @@
       // Exposure: heat past white doesn't clip, it spreads the burned-out
       // core. Output is premultiplied white, so the page shows through.
       float v = 1.0 - exp(-max(heat - 0.01, 0.0) * 2.0);
-      // The canvas runs past the hero behind the text; fade out before its edges.
-      v *= smoothstep(0.0, 0.18, uv.y) * smoothstep(0.0, 0.18, 1.0 - uv.y)
+      // The canvas ends behind the text; fade out before its edges.
+      v *= smoothstep(0.0, 0.25, uv.y) * smoothstep(0.0, 0.06, 1.0 - uv.y)
          * smoothstep(0.0, 0.08, uv.x) * smoothstep(0.0, 0.08, 1.0 - uv.x);
       gl_FragColor = vec4(v, v, v, v);
     }`;
@@ -144,6 +161,7 @@
     burn = program(burnFrag, ["uMask", "uSoft", "uB1", "uB2", "uB3", "uB4", "uBloomW", "uRes", "uTime", "uPointer", "uPointerHeat"]);
   } catch (err) {
     console.warn(err);
+    giveUp();
     return;
   }
   gl.useProgram(burn.prog);
@@ -182,7 +200,7 @@
   const maskTex = makeTexture();
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-  // ---------- The E, in mask pixels ----------
+  // ---------- The wordmark, in mask pixels ----------
 
   // Two layers. `trail` holds the engraved line and fades every frame; `mask`
   // is what goes to the GPU: the trail plus the laser's head, glare and
@@ -191,44 +209,65 @@
   const tc = trail.getContext("2d");
   const mask = document.createElement("canvas");
   const m = mask.getContext("2d");
-  let geo = null;  // { pts, cum, per, eh, lw }
+  let geo = null;  // { pts, cum, jump, cuts, per, eh, k, lw }
 
-  function layoutE(heroH) {
-    const w = mask.width, h = mask.height;
-    const eh = Math.min(heroH * SIZE, w * 0.5 * E_H / E_W);
-    const k = eh / E_H;
-    const ox = (w - E_W * k) / 2, oy = (h - E_H * k) / 2;
-    const pts = E_PTS.map(([x, y]) => [ox + x * k, oy + y * k]);
-    pts.push(pts[0]);
-    const cum = [0];
-    for (let i = 1; i < pts.length; i++) {
-      cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  // All the outlines as one path, over the .mark image. Arc length doesn't
+  // count the jumps between outlines: the beam blanks and is simply there.
+  function layoutLogo(scale) {
+    const c = canvas.getBoundingClientRect(), r = mark.getBoundingClientRect();
+    const k = r.width / LOGO_W * scale;
+    const ox = (r.left - c.left) * scale, oy = (r.top - c.top) * scale;
+    const pts = [], cum = [], jump = [], cuts = [];
+    let len = 0;
+    for (const [dx, outlines] of LETTERS) {
+      for (const outline of outlines) {
+        const ring = [...outline, outline[0]].map(([u, y]) =>
+          [ox + (dx + u + SHEAR * (LOGO_H - y)) * k, oy + y * k]);
+        ring.forEach((p, i) => {
+          if (i) len += Math.hypot(p[0] - pts[pts.length - 1][0], p[1] - pts[pts.length - 1][1]);
+          else if (pts.length) cuts.push(len);
+          pts.push(p);
+          cum.push(len);
+          jump.push(i === 0 && pts.length > 1);
+        });
+      }
     }
-    geo = { pts, cum, per: cum[cum.length - 1], eh, lw: Math.max(1, eh * 0.007) };
+    const eh = LOGO_H * k;
+    geo = { pts, cum, jump, cuts, per: len, eh, k, lw: Math.max(1, eh * 0.014) };
   }
 
-  // Point at arc length s along the outline (wraps).
-  function pointAt(s) {
+  // Point at arc length s along the path (wraps). A lap's end is the end of
+  // the path when asked for as an end, not the start of the next lap.
+  function pointAt(s, asEnd = false) {
     const { pts, cum, per } = geo;
-    s = ((s % per) + per) % per;
+    s = asEnd ? s - per * (Math.ceil(s / per) - 1) : ((s % per) + per) % per;
     let i = 1;
-    while (cum[i] < s) i++;
-    const f = (s - cum[i - 1]) / (cum[i] - cum[i - 1]);
+    while (i < pts.length - 1 && cum[i] < s) i++;
+    const f = Math.min(1, (s - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1));
     return [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * f, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * f];
   }
 
-  // Path along the outline from s0 forward to s1, turning the corners.
+  // Path from s0 forward to s1, turning the corners and lifting at the jumps
+  // (including the one from the last E back to the first at each new lap).
   function pathAlong(ctx, s0, s1) {
-    const { pts, cum, per } = geo;
+    const { pts, cum, jump, per } = geo;
     ctx.beginPath();
     ctx.moveTo(...pointAt(s0));
     for (let lap = Math.floor(s0 / per) * per; lap < s1; lap += per) {
-      for (let i = 1; i < pts.length; i++) {
+      for (let i = 0; i < pts.length; i++) {
         const s = lap + cum[i];
-        if (s > s0 && s < s1) ctx.lineTo(pts[i][0], pts[i][1]);
+        if (s > s0 && s < s1) (i === 0 || jump[i] ? ctx.moveTo : ctx.lineTo).call(ctx, pts[i][0], pts[i][1]);
       }
     }
-    ctx.lineTo(...pointAt(s1));
+    ctx.lineTo(...pointAt(s1, true));
+  }
+
+  // The beam dims to nothing either side of a jump between outlines.
+  function blankAt(s) {
+    s = ((s % geo.per) + geo.per) % geo.per;
+    let d = Infinity;
+    for (const c of geo.cuts) d = Math.min(d, Math.abs(s - c));
+    return Math.min(1, d / (BLANK * geo.k));
   }
 
   function clearTrail() {
@@ -254,8 +293,7 @@
     for (let i = 0; i < steps; i++) tc.fillRect(0, 0, trail.width, trail.height);
   }
 
-  // Engrave the stretch of outline the laser crossed since the last frame. The
-  // line itself is exact; the burn shader makes it uneven.
+  // Engrave the stretch of outline the laser crossed since the last frame.
   function engrave(s0, s1, v = 160) {
     tc.globalCompositeOperation = "lighten";
     tc.lineCap = "round";
@@ -269,7 +307,7 @@
   // Sparks thrown off the cut: a little upward kick, then gravity.
   let sparks = [];
   function updateSparks(dt, x, y, power) {
-    const eh = geo.eh;
+    const eh = Math.max(geo.eh * 1.6, mask.height * 0.12);
     let n = power > 0.5 ? dt * SPARKS * (0.5 + Math.random()) : 0;
     while (n-- > Math.random()) {
       const a = Math.random() * 2 * Math.PI, sp = eh * (0.3 + Math.random() * 1.3);
@@ -335,17 +373,6 @@
     m.fill();
   }
 
-  // A still frame's trail, drawn in one go: segments brightening towards the head.
-  function drawStill(s) {
-    const len = geo.per * 0.6, n = 48;
-    clearTrail();
-    for (let i = 0; i < n; i++) {
-      engrave(s - len * (n - i) / n, s - len * (n - i - 1) / n, Math.round(160 * Math.exp(-(n - i) / n * 2.5)));
-    }
-    sparks = [];
-    compose(...pointAt(s), 1);
-  }
-
   // ---------- Frame ----------
 
   let levels = null, bloomW = [0, 0, 0, 0];
@@ -353,10 +380,9 @@
     const scale = Math.min(window.devicePixelRatio || 1, 2) * 0.75;
     const w = Math.max(1, Math.round(canvas.clientWidth * scale));
     const h = Math.max(1, Math.round(canvas.clientHeight * scale));
-    if (w === canvas.width && h === canvas.height && geo) return false;
     canvas.width = mask.width = trail.width = w;
     canvas.height = mask.height = trail.height = h;
-    layoutE(hero.clientHeight * scale);
+    layoutLogo(scale);
     clearTrail();
 
     // soft: a light blur of the line as it is.
@@ -381,7 +407,6 @@
     }));
     let stored = 1;
     bloomW = levels.slice(1).map((l, i) => BLOOM[i] / (stored *= l.gain));
-    return true;
   }
 
   function blurPass(srcTex, dst, dx, dy, sigma, pow, gain) {
@@ -428,26 +453,27 @@
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  // Pointer over the hero, eased.
+  // Pointer over the hero (the text sits on top of it, so listen on the page), eased.
   let target = [0.5, 0.5], pointer = [0.5, 0.5], pointerHeat = 0, lastMove = -1e9;
-  hero.addEventListener("pointermove", e => {
+  addEventListener("pointermove", e => {
     const r = canvas.getBoundingClientRect();
     target = [(e.clientX - r.left) / r.width, 1 - (e.clientY - r.top) / r.height];
     lastMove = performance.now();
   }, { passive: true });
 
-  // Each cycle the laser traces the E once from the top-left corner, easing
-  // in and out (sine), then switches off and rests. Arc length accumulates over
-  // laps so it only ever grows, which keeps pathAlong() simple. Power is the
-  // laser's on/off, with a short fade either side.
+  // Each cycle the laser traces the whole logo once from the first E's top-left
+  // corner, easing in and out (sine), then switches off and rests. Arc length
+  // accumulates over laps so it only ever grows, which keeps pathAlong()
+  // simple. Power is the laser's on/off, with a short fade either side.
   function traceAt(t) {
     const cycle = TRACE + REST;
     const n = Math.floor(t / cycle);
     const local = t - n * cycle;
     const k = Math.min(1, local / TRACE);
-    const eased = k - Math.sin(2 * Math.PI * k) / (2 * Math.PI);
-    const power = Math.min(1, local / 0.06, Math.max(0, (TRACE + 0.08 - local) / 0.08));
-    return { s: (n + eased) * geo.per, power };
+    const eased = k - EASE * Math.sin(2 * Math.PI * k) / (2 * Math.PI);
+    const s = (n + eased) * geo.per;
+    const power = Math.min(1, local / 0.06, Math.max(0, (TRACE + 0.08 - local) / 0.08)) * blankAt(s);
+    return { s, power };
   }
 
   let start = performance.now(), last = start, sLast = 0;
@@ -459,9 +485,9 @@
     const { s, power } = traceAt(t);
     fade(dt);
     // After a pause (tab hidden, hero scrolled away) don't engrave the whole gap.
-    if (power > 0 && s > sLast && s - sLast < geo.per * 0.1) engrave(sLast, s);
+    if (power > 0 && s > sLast && s - sLast < geo.per * 0.05) engrave(sLast, s);
     sLast = s;
-    const [x, y] = pointAt(s);
+    const [x, y] = pointAt(s, true);  // at a lap's end the head stays on the last E
     updateSparks(dt, x, y, power);
     compose(x, y, power);
 
@@ -469,11 +495,6 @@
     pointer[1] += (target[1] - pointer[1]) * 0.08;
     pointerHeat += ((now - lastMove < 1200 ? 1 : 0) - pointerHeat) * 0.04;
     render(t, pointer, pointerHeat);
-  }
-
-  function renderStill() {
-    drawStill(geo.per * 0.7);
-    render(0, [0.5, 0.5], 0);
   }
 
   // Only animate while the hero is on screen.
@@ -484,7 +505,7 @@
     requestAnimationFrame(loop);
   }
   function run() {
-    if (running || reduceMotion) return;
+    if (running) return;
     running = true;
     last = performance.now();
     requestAnimationFrame(loop);
@@ -493,15 +514,22 @@
     new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) run(); }).observe(hero);
   }
 
-  let resizeTimer;
+  // Mobile toolbars nudge the height while scrolling; only re-lay out when the
+  // canvas or the logo actually moved.
+  let resizeTimer, laidOut = "";
+  function relayout() {
+    const c = canvas.getBoundingClientRect(), r = mark.getBoundingClientRect();
+    const key = [c.width, c.height, r.left - c.left, r.top - c.top, r.width].map(Math.round).join();
+    if (key === laidOut) return;
+    laidOut = key;
+    resize();
+    sLast = 0;
+  }
   addEventListener("resize", () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      if (resize()) { sLast = 0; if (reduceMotion) renderStill(); }
-    }, 150);
+    resizeTimer = setTimeout(relayout, 150);
   });
 
-  document.documentElement.classList.add("has-ember");
-  resize();
-  if (reduceMotion) renderStill(); else run();
+  relayout();
+  run();
 })();

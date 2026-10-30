@@ -29,46 +29,30 @@ body {
   background-image: radial-gradient(120% 90% at 50% -10%, #141414 0%, #0a0a0a 60%);
 }
 
-/* The burning E fills the first screen; the wordmark and the line sit below,
-   their top edge just showing so the page reads as more than one screen. */
+/* The laser's canvas sits behind the first screen. It draws the wordmark
+   over the .mark below, which keeps the logo's place in the layout. */
 .hero {
-  position: relative;
-  /* On portrait phones the E is width-bound, so the height follows the width. */
-  height: min(50svh, 90vw);
-  min-height: 16rem;
-}
-
-/* The canvas runs past the hero top and bottom so the halo can fall off
-   behind the text instead of being cut at the hero's edge. */
-.hero canvas {
   position: absolute;
-  top: -25%;
-  bottom: -25%;
+  top: 0;
   left: 0;
   width: 100%;
-  height: 150%;
-  display: block;
+  height: 100svh;
+  min-height: 34rem;
   pointer-events: none;
 }
 
-/* Without WebGL (or JS) the E is a still outline. */
-.e-still {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(45vw, 26svh);
-  height: auto;
-  transform: translate(-50%, -50%);
-  color: rgba(237, 237, 234, 0.5);
+.hero canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
-.has-ember .e-still { display: none; }
 
 main {
   position: relative;
   z-index: 1;
   max-width: calc(var(--column) + 2 * var(--gutter));
   margin: 0 auto;
-  padding: 0 var(--gutter) clamp(4rem, 10vw, 7rem);
+  padding: clamp(8rem, 36svh, 22rem) var(--gutter) clamp(4rem, 10vw, 7rem);
 }
 
 /* Language switcher — over the hero, on the content column's right edge */
@@ -131,12 +115,18 @@ main {
   letter-spacing: 0.06em;
 }
 
-.logo {
-  display: block;
-  width: clamp(230px, 44vw, 380px);
-  height: auto;
-  margin: 0 0 clamp(0.85rem, 2vw, 1.1rem);
+/* The wordmark spans the column. While the laser draws it, the image only
+   holds its place (and its alt text); without WebGL, or with reduced motion,
+   it shows. */
+.mark {
+  margin: 0 0 clamp(1.1rem, 2.6vw, 1.6rem);
 }
+.mark img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.has-ember .mark img { opacity: 0; }
 
 .tagline {
   margin: 0 0 clamp(2.25rem, 5vw, 3.25rem);

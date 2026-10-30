@@ -28,6 +28,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,340..460;1,9..144,340..460&family=Space+Grotesk:wght@500&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="assets/site.css" />
+  <!-- Decided before first paint, so the still logo never flashes up before
+       the laser starts drawing it. ember.js takes the class off if WebGL fails. -->
+  <script>
+    if ("WebGLRenderingContext" in window && !matchMedia("(prefers-reduced-motion: reduce)").matches)
+      document.documentElement.classList.add("has-ember");
+  </script>
 </head>
 <body>
   <header class="top">
@@ -38,13 +44,10 @@
     </nav>
   </header>
 
-  <div class="hero" aria-hidden="true">
-    <canvas id="ember"></canvas>
-    <svg class="e-still" viewBox="-2 -2 186.26 151" aria-hidden="true"><polygon points="12.86,0 182.26,0 180.95,15 64.05,15 60.03,61 104.23,61 102.87,76.5 58.67,76.5 53.81,132 170.91,132 169.6,147 0,147" fill="none" stroke="currentColor" stroke-width="1.2" vector-effect="non-scaling-stroke" /></svg>
-  </div>
+  <div class="hero" aria-hidden="true"><canvas id="ember"></canvas></div>
 
   <main>
-    <img class="logo" src="assets/enclavelogo-transparent-noborder.png" alt="ENCLAVE" width="1416" height="147" />
+    <h1 class="mark"><img src="assets/enclavelogo-transparent-noborder.png" alt="ENCLAVE" width="1416" height="147" /></h1>
     <p class="tagline">Strategic Prototyping</p>
 
     <p class="lead">We prototype <span class="flap" aria-label="experiences, products, value propositions, brands, and business models" data-words="experiences|products|value propositions|brands|business models">experiences</span> to help our clients learn.</p>

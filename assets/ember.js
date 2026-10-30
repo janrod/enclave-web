@@ -21,7 +21,7 @@
   const TRACE = 4;     // seconds for the dot to trace the E once
   const REST = 0.5;    // seconds the laser is off before the next trace
   const SPARKS = 70;   // sparks per second while cutting
-  const TRAIL = 2.6;   // seconds for the burn trail to fade to 1/e
+  const TRAIL = 1.3;   // seconds for the burn trail to fade to 1/e
   const FADE_STEP = 1 / 30;  // the fade runs at a fixed rate, see fade()
 
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -87,18 +87,23 @@
       // The halo is sampled through drifting noise so it wobbles like heat
       // haze instead of sitting as a clean blur.
       vec2 warp = vec2(fbm(p * 2.2 + vec2(t * 0.13, 0.0)), fbm(p * 2.2 + vec2(5.2, -t * 0.11))) - 0.5;
-      float m = texture2D(uMask, uv).r;
-      float a = texture2D(uSoft, uv + warp * 0.006).r;
+      // The line: a fine, fast warp roughens and shimmers its edges, and an
+      // ember field makes it burn unevenly, hot spots crawling along it.
+      vec2 fine = vec2(fbm(p * 30.0 + vec2(0.0, t * 0.9)), fbm(p * 30.0 + vec2(7.7, -t * 0.8))) - 0.5;
+      float ember = 0.35 + 1.3 * fbm(p * 26.0 + vec2(-t * 0.7, t * 0.45));
+      float m = texture2D(uMask, uv + fine * 0.006 + warp * 0.003).r * ember;
+      float a = texture2D(uSoft, uv + fine * 0.009 + warp * 0.012).r * (0.6 + 0.4 * ember);
       float b = texture2D(uMid, uv + warp * 0.03).r;
       float c = texture2D(uWide, uv + warp * 0.07).r;
       c *= 0.7 + 0.6 * fbm(p * 1.6 + vec2(-t * 0.3, t * 0.2));
-      float heat = m * 0.9 + a * 1.4 + b * 1.6 + c * 2.5;
+      float heat = m * 0.45 + a * 1.9 + b * 1.8 + c * 2.5;
 
       // Smoulder: hot and cold patches drifting through the glow.
       heat += 0.7 * smoothstep(0.45, 0.85, fbm(p * 3.0 + vec2(t * 0.07, -t * 0.05))) * c;
       heat -= 0.4 * smoothstep(0.55, 0.9, fbm(p * 6.0 - t * 0.12)) * b;
 
       heat *= 0.94 + 0.06 * sin(t * 0.7 + p.y * 2.0);              // breathing
+      heat *= 0.86 + 0.14 * noise(vec2(t * 19.0, 0.5));             // flicker
 
       // The pointer is a faint torch.
       vec2 d = vec2((uv.x - uPointer.x) * aspect, uv.y - uPointer.y);
@@ -254,12 +259,13 @@
     for (let i = 0; i < steps; i++) tc.fillRect(0, 0, trail.width, trail.height);
   }
 
-  // Engrave the stretch of outline the laser crossed since the last frame.
+  // Engrave the stretch of outline the laser crossed since the last frame. The
+  // line itself is exact; the burn shader makes it uneven.
   function engrave(s0, s1, v = 235) {
     tc.globalCompositeOperation = "lighten";
     tc.lineCap = "round";
     tc.lineJoin = "round";
-    tc.lineWidth = geo.lw * 1.5;
+    tc.lineWidth = geo.lw * 1.6;
     tc.strokeStyle = `rgb(${v},${v},${v})`;
     pathAlong(tc, s0, s1);
     tc.stroke();
@@ -304,7 +310,8 @@
     }
 
     if (power <= 0) return;
-    const f = power * (0.85 + 0.15 * Math.random());  // the laser flickers
+    // The laser flickers, and now and then sputters.
+    const f = power * (Math.random() < 0.08 ? 0.35 : 0.6 + 0.4 * Math.random());
     // Glare: a short cross streak through the head.
     const streak = (dx, dy, len, thick, peak) => {
       const g = m.createLinearGradient(x - dx * len, y - dy * len, x + dx * len, y + dy * len);
@@ -318,10 +325,10 @@
       m.lineTo(x + dx * len, y + dy * len);
       m.stroke();
     };
-    streak(1, 0, lw * 30 * f, lw * 1.1, 0.8);
-    streak(0, 1, lw * 12 * f, lw * 0.9, 0.55);
+    streak(1, 0, lw * 30 * f * (0.7 + 0.6 * Math.random()), lw * 1.6, 1);
+    streak(0, 1, lw * 12 * f * (0.7 + 0.6 * Math.random()), lw * 1.3, 0.7);
     // Head: small and white-hot; the blur passes turn it into the bloom.
-    const r = lw * 5 * (0.9 + 0.2 * Math.random());
+    const r = lw * 7 * (0.85 + 0.3 * Math.random());
     const g = m.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, `rgba(255,255,255,${f})`);
     g.addColorStop(0.45, `rgba(255,255,255,${0.85 * f})`);
@@ -360,7 +367,7 @@
     if (levels) levels.forEach(l => { freeTarget(l.tmp); freeTarget(l.out); });
     // The wide halo is faint after that much blur, so it's stored amplified
     // (gain) to keep its falloff smooth in 8 bits; the burn pass weighs it to suit.
-    levels = [[2, 0.018, 1], [4, 0.11, 1], [8, 0.5, 8]].map(([div, sigma, gain]) => ({
+    levels = [[2, 0.03, 1], [4, 0.13, 1], [8, 0.5, 8]].map(([div, sigma, gain]) => ({
       tmp: makeTarget(w / div, h / div),
       out: makeTarget(w / div, h / div),
       sigma: geo.eh * sigma,
